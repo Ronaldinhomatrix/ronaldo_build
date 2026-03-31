@@ -48,7 +48,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         self.pode_editar      = True
         self.treino_atual     = ''
         self.progresso_treino = {}
-        self.cliente       = self._carregar(CLIENTE_FILE,       None)
+        self.cliente       = self._carregar(CLIENTE_FILE, None) or self._recuperar_cliente_downloads()
         self.treinos       = self._carregar(TREINOS_FILE,       {})
         self.treinos_nomes = self._carregar(TREINOS_NOMES_FILE, {})
         self.historico     = self._carregar(HISTORICO_FILE,     {})
@@ -79,6 +79,11 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             threading.Thread(target=self._puxar_treinos_firebase, daemon=True).start()
             Clock.schedule_interval(self._verificar_sync_diario, 60)
 
+    def on_resume(self):
+        """Chamado quando o app volta ao primeiro plano no Android."""
+        if self.cliente:
+            threading.Thread(target=self._puxar_treinos_firebase, daemon=True).start()
+
     def _verificar_sync_diario(self, _dt):
         """Dispara sync automático às 5h da manhã, uma vez por dia."""
         agora = datetime.now()
@@ -95,6 +100,30 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
 
     # ── dados ────────────────────────────────────────────────────────────────
 
+    _CLIENTE_BACKUP = os.path.join(_pasta_downloads(), 'ronaldo_cliente_backup.json')
+
+    def _recuperar_cliente_downloads(self):
+        """Se cliente.json sumiu (reinstalação), tenta recuperar da Downloads."""
+        dados = self._carregar(self._CLIENTE_BACKUP, None)
+        if not (dados and dados.get('id') and dados.get('nome')):
+            return None
+        # Restaura cliente.json
+        cliente = {'id': dados['id'], 'nome': dados['nome']}
+        with open(CLIENTE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cliente, f, ensure_ascii=False, indent=2)
+        # Restaura treinos, nomes e histórico se presentes no backup
+        if dados.get('treinos'):
+            with open(TREINOS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(dados['treinos'], f, ensure_ascii=False, indent=2)
+        if dados.get('treinos_nomes'):
+            with open(TREINOS_NOMES_FILE, 'w', encoding='utf-8') as f:
+                json.dump(dados['treinos_nomes'], f, ensure_ascii=False, indent=2)
+        if dados.get('historico'):
+            with open(HISTORICO_FILE, 'w', encoding='utf-8') as f:
+                json.dump(dados['historico'], f, ensure_ascii=False, indent=2)
+        print('[Recuperação] Dados restaurados da Downloads.')
+        return cliente
+
     def _carregar(self, path, default):
         if os.path.exists(path):
             with open(path, 'r', encoding='utf-8') as f:
@@ -106,6 +135,14 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             json.dump(self.treinos, f, ensure_ascii=False, indent=2)
         with open(HISTORICO_FILE, 'w', encoding='utf-8') as f:
             json.dump(self.historico, f, ensure_ascii=False, indent=2)
+        # Mantém backup na Downloads atualizado com os treinos mais recentes
+        if self.cliente:
+            try:
+                backup = {**self.cliente, 'treinos': self.treinos, 'treinos_nomes': self.treinos_nomes, 'historico': self.historico}
+                with open(self._CLIENTE_BACKUP, 'w', encoding='utf-8') as f:
+                    json.dump(backup, f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
         # Sincroniza historico + atividade + obs com Firebase (treinos são do painel)
         if self.cliente:
             obs_map = {
@@ -166,6 +203,13 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             with open(TREINOS_NOMES_FILE, 'w', encoding='utf-8') as f:
                 json.dump(self.treinos_nomes, f, ensure_ascii=False, indent=2)
         firebase_sync.marcar_trainer_lido(self.cliente['id'])
+        # Atualiza backup na Downloads com os treinos recebidos do treinador
+        try:
+            backup = {**self.cliente, 'treinos': self.treinos, 'treinos_nomes': self.treinos_nomes, 'historico': self.historico}
+            with open(self._CLIENTE_BACKUP, 'w', encoding='utf-8') as f:
+                json.dump(backup, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
         # Atualiza a tela home se estiver visível
         try:
             self.sm.get_screen('home')._reconstruir_botoes()

@@ -2,7 +2,6 @@ import threading
 from datetime import datetime
 
 from kivy.clock import Clock
-from kivy.core.window import Window
 from kivy.metrics import dp
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -28,7 +27,7 @@ class _BotaoTreino(MDCard):
             padding=[dp(16), dp(8), dp(8), dp(8)],
             spacing=dp(2),
             ripple_behavior=True,
-            radius=[dp(20)],
+            radius=[dp(36)],
             md_bg_color=self.COR_PADRAO,
             **kwargs,
         )
@@ -110,17 +109,15 @@ class TelaHome(MDScreen):
         titulo = MDBoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            height=dp(88),
+            height=dp(100),
             spacing=0,
         )
-        # font_size dinâmico: 7% da largura da tela, entre 22sp e 38sp
-        _fs = max(22, min(38, int(Window.width * 0.07)))
         titulo.add_widget(MDLabel(
             text='Ronaldo Medeiros',
             halign='center',
-            font_size=f'{_fs}sp',
+            font_style='H3',
             size_hint_y=None,
-            height=dp(52),
+            height=dp(64),
         ))
         titulo.add_widget(MDLabel(
             text='Fisiologista',
@@ -197,7 +194,7 @@ class TelaHome(MDScreen):
             on_release=lambda x: self._sincronizar(),
         ))
         rodape.add_widget(MDFlatButton(
-            text='Configurações',
+            text='Sobre',
             size_hint_x=1,
             height=dp(44),
             on_release=lambda x: self._abrir_configuracoes(),

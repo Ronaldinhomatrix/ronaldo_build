@@ -80,6 +80,7 @@ class CardExercicio(MDCard):
             size_hint=(None, None),
             size=(dp(62), dp(28)),
             font_size='11sp',
+            rounded_button=True,
         )
         self._btn_contador.bind(on_release=self._marcar_serie)
         rodape.add_widget(self._btn_contador)
@@ -196,6 +197,7 @@ class TelaTreino(MDScreen):
             text='Registrar treino completo',
             size_hint=(1, None),
             height=dp(52),
+            rounded_button=True,
             disabled=True,
             on_release=lambda x: self._concluir_treino(),
         )
