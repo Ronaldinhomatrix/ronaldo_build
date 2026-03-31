@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+{% block title %}{{ cliente.nome }} — Painel Treinador{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <a href="/" class="btn btn-sm btn-outline-secondary">← Voltar</a>
+  <h4 class="mb-0">{{ cliente.nome }}</h4>
+  {% if cliente.trainer_editou %}
+    <span class="badge badge-trainer">Aguardando sync no app</span>
+  {% endif %}
+  <a href="/cliente/{{ cliente.id }}/historico" class="btn btn-sm btn-outline-info ms-auto me-2">📊 Histórico</a>
+  <form method="post" action="/cliente/{{ cliente.id }}/excluir" class="me-2"
+        onsubmit="return confirm('Excluir {{ cliente.nome }}? Esta ação não pode ser desfeita.')">
+    <button class="btn btn-sm btn-outline-danger">🗑 Excluir cliente</button>
+  </form>
+</div>
+
+{# ── Treinos ──────────────────────────────────────────────────────────────── #}
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <h5 class="mb-0">Treinos</h5>
+  {% if cliente.treinos|length < 5 %}
+  <form method="post" action="/cliente/{{ cliente.id }}/treino/add"
+        class="d-flex gap-2 align-items-center ms-2">
+    <input class="form-control form-control-sm bg-dark text-light border-secondary"
+           name="nome_treino" placeholder="Nome do treino (ex: Peito)" style="width:200px">
+    <button class="btn btn-sm btn-outline-primary">+ Adicionar treino</button>
+  </form>
+  {% endif %}
+</div>
+
+{% for letra, exercicios in cliente.treinos|dictsort %}
+<div class="card mb-4 {% if letra == cliente.proximo_treino %}border-success{% endif %}">
+  <div class="card-header d-flex justify-content-between align-items-center
+              {% if letra == cliente.proximo_treino %}bg-success bg-opacity-25{% endif %}">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="fw-bold">Treino {{ letra }}</span>
+      {% if letra == cliente.proximo_treino %}
+        <span class="badge" style="background:#198754">Treino atual</span>
+      {% endif %}
+      {# ── editar nome do treino ── #}
+      <form method="post" action="/cliente/{{ cliente.id }}/treino/renomear"
+            class="d-flex gap-1 align-items-center">
+        <input type="hidden" name="letra" value="{{ letra }}">
+        <input class="form-control form-control-sm bg-dark text-light border-secondary"
+               name="nome" value="{{ cliente.treinos_nomes.get(letra, '') }}"
+               placeholder="Nome do treino" style="width:180px">
+        <button class="btn btn-sm btn-outline-success">💾 Salvar nome</button>
+      </form>
+    </div>
+    <div class="d-flex gap-2">
+      {% if letra != cliente.treino_atual %}
+      <form method="post" action="/cliente/{{ cliente.id }}/treino/definir-atual">
+        <input type="hidden" name="letra" value="{{ letra }}">
+        <button class="btn btn-sm btn-outline-warning">📌 Tornar atual</button>
+      </form>
+      {% else %}
+        <span class="btn btn-sm btn-warning disabled">📌 Treino atual</span>
+      {% endif %}
+      <a href="/cliente/{{ cliente.id }}/treino/{{ letra }}/exportar"
+         class="btn btn-sm btn-outline-info" title="Exportar treino como arquivo JSON">⬇ Exportar</a>
+      {% if cliente.treinos|length > 1 %}
+      <form method="post" action="/cliente/{{ cliente.id }}/treino/remove"
+            onsubmit="return confirm('Remover Treino {{ letra }}?')">
+        <input type="hidden" name="letra" value="{{ letra }}">
+        <button class="btn btn-sm btn-outline-danger">Remover treino</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-body p-0">
+    {% if exercicios %}
+    <table class="table table-dark table-hover mb-0 align-middle">
+      <thead><tr class="text-light">
+        <th style="width:36px"></th>
+        <th>Exercício</th>
+        <th style="width:130px">Séries</th>
+        <th style="width:130px">Carga</th>
+        <th>Obs. cliente</th>
+        <th style="width:90px"></th>
+      </tr></thead>
+      <tbody>
+        {% for ex in exercicios %}
+        <tr>
+          {# miniatura da mídia #}
+          <td>
+            {% if ex.midia_url %}
+              {% if ex.midia_tipo == 'video' %}
+                <a href="{{ ex.midia_url }}" target="_blank" title="Ver vídeo"
+                   class="text-primary fs-5">▶</a>
+              {% else %}
+                <a href="{{ ex.midia_url }}" target="_blank">
+                  <img src="{{ ex.midia_url }}"
+                       style="width:36px;height:36px;object-fit:cover;border-radius:4px"
+                       onerror="this.style.display='none'">
+                </a>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td class="fw-semibold text-light">{{ ex.nome }}</td>
+
+          {# edição inline: só séries e carga #}
+          <form method="post" action="/cliente/{{ cliente.id }}/exercicio/edit"
+                style="display:contents">
+            <input type="hidden" name="treino" value="{{ letra }}">
+            <input type="hidden" name="ex_id"  value="{{ ex.id }}">
+            <td>
+              <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                     name="series" value="{{ ex.series }}" placeholder="ex: 3x12" required>
+            </td>
+            <td>
+              <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                     name="peso" value="{{ ex.peso }}" placeholder="ex: 80kg" required>
+            </td>
+            <td>
+              {% if ex.obs %}
+                <span class="text-warning small">{{ ex.obs }}</span>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+            <td class="text-end" style="white-space:nowrap">
+              <button class="btn btn-sm btn-outline-success me-1">💾 Salvar</button>
+          </form>
+          <form method="post" action="/cliente/{{ cliente.id }}/exercicio/remove"
+                onsubmit="return confirm('Remover {{ ex.nome }}?')" class="d-inline">
+            <input type="hidden" name="treino" value="{{ letra }}">
+            <input type="hidden" name="ex_id"  value="{{ ex.id }}">
+            <button class="btn btn-sm btn-outline-danger">✕ Remover</button>
+          </form>
+            </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="text-muted p-3 mb-0">Nenhum exercício.</p>
+    {% endif %}
+
+    {# ── Adicionar exercício do banco ─────────────────────────────────────── #}
+    <div class="p-3 border-top border-secondary">
+      {% if banco %}
+      <form method="post" action="/cliente/{{ cliente.id }}/exercicio/add"
+            class="d-flex gap-2 flex-wrap align-items-end"
+            onsubmit="return validarPicker('{{ letra }}')">
+        <input type="hidden" name="treino"      value="{{ letra }}">
+        <input type="hidden" name="nome"        id="nome-{{ letra }}">
+        <input type="hidden" name="midia_url"   id="midia_url-{{ letra }}">
+        <input type="hidden" name="midia_tipo"  id="midia_tipo-{{ letra }}">
+        <input type="hidden" name="ex_banco_id" id="ex_banco_id-{{ letra }}">
+
+        <div style="min-width:220px">
+          <label class="form-label small text-secondary mb-1" style="white-space:nowrap">Exercício</label>
+          <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                  id="sel-{{ letra }}"
+                  onchange="selecionarEx('{{ letra }}')">
+            <option value="">— Escolher do banco —</option>
+            {% for ex in banco %}
+            <option value="{{ ex.id }}"
+                    data-nome="{{ ex.nome }}"
+                    data-url="{{ ex.midia_url or '' }}"
+                    data-tipo="{{ ex.midia_tipo or '' }}">{{ ex.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label small text-secondary mb-1">Séries</label>
+          <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                 name="series" placeholder="ex: 3x12" style="width:110px" required>
+        </div>
+        <div>
+          <label class="form-label small text-secondary mb-1">Carga</label>
+          <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                 name="peso" placeholder="ex: 80kg" style="width:100px" required>
+        </div>
+        <div class="align-self-end">
+          <button class="btn btn-sm btn-primary">Adicionar</button>
+        </div>
+      </form>
+      {% else %}
+      <p class="text-muted small mb-0">
+        <a href="/exercicios" class="text-primary">Cadastre exercícios no banco</a> antes de montar treinos.
+      </p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{# ── Importar treino ──────────────────────────────────────────────────────── #}
+<div class="card mb-4 mt-2">
+  <div class="card-header fw-bold">⬆ Importar treino de arquivo</div>
+  <div class="card-body">
+    <form method="post" action="/cliente/{{ cliente.id }}/treino/importar"
+          enctype="multipart/form-data"
+          class="d-flex gap-3 align-items-end flex-wrap"
+          onsubmit="return confirm('Importar substituirá todos os exercícios do treino destino. Continuar?')">
+      <div>
+        <label class="form-label small text-secondary mb-1">Arquivo (.json)</label>
+        <input type="file" name="arquivo" accept=".json"
+               class="form-control form-control-sm bg-dark text-light border-secondary"
+               style="width:240px" required>
+      </div>
+      <div>
+        <label class="form-label small text-secondary mb-1">Destino</label>
+        <select name="treino_destino"
+                class="form-select form-select-sm bg-dark text-light border-secondary"
+                style="width:120px" required>
+          {% for letra in ['A','B','C','D','E'] %}
+          <option value="{{ letra }}">Treino {{ letra }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="align-self-end">
+        <button class="btn btn-sm btn-outline-info">Importar</button>
+      </div>
+    </form>
+    <p class="text-muted small mt-2 mb-0">
+      O arquivo deve ter sido exportado por este painel. Os exercícios do treino destino serão substituídos.
+    </p>
+  </div>
+</div>
+
+{# ── Histórico completo ───────────────────────────────────────────────────── #}
+{% if cliente.sessoes %}
+<h5 class="mt-5 mb-3">Histórico completo
+  <small class="text-secondary fs-6 ms-2">{{ cliente.sessoes | length }} sessão(ões)</small>
+</h5>
+
+{% for sessao in cliente.sessoes %}
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between">
+    <span class="fw-bold">Treino {{ sessao.treino }} — {{ sessao.data }}</span>
+    <span class="text-muted small">{{ sessao.exercicios | length }} exercício(s)</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-dark table-sm mb-0">
+      <thead><tr>
+        <th>Exercício</th><th>Séries</th><th>Carga</th><th>Status</th><th>Evolução de carga</th>
+      </tr></thead>
+      <tbody>
+        {% for ex in sessao.exercicios %}
+        <tr>
+          <td>{{ ex.nome }}</td>
+          <td>{{ ex.series }}</td>
+          <td>{{ ex.peso }}</td>
+          <td>
+            {% if ex.concluido %}
+              <span class="badge bg-success">✓ Concluído</span>
+            {% else %}
+              <span class="badge bg-secondary">Parcial</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if ex.evolucao | length > 1 %}
+              <small class="text-muted">
+                {% for e in ex.evolucao[:5] %}
+                  {{ e.data[:5] }}: <b>{{ e.peso }}</b>{% if not loop.last %} → {% endif %}
+                {% endfor %}
+              </small>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<script>
+function selecionarEx(letra) {
+  const sel = document.getElementById('sel-' + letra);
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('nome-'        + letra).value = opt.dataset.nome  || '';
+  document.getElementById('midia_url-'   + letra).value = opt.dataset.url   || '';
+  document.getElementById('midia_tipo-'  + letra).value = opt.dataset.tipo  || '';
+  document.getElementById('ex_banco_id-' + letra).value = opt.value         || '';
+}
+
+function validarPicker(letra) {
+  const nome = document.getElementById('nome-' + letra).value;
+  if (!nome) {
+    alert('Escolha um exercício do banco antes de adicionar.');
+    return false;
+  }
+  return true;
+}
+</script>
+
+{% endblock %}

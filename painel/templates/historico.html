@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Histórico — {{ cliente.nome }}{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <a href="/cliente/{{ cliente.id }}" class="btn btn-sm btn-outline-secondary">← Voltar</a>
+  <h4 class="mb-0">{{ cliente.nome }} — Histórico</h4>
+</div>
+
+{# ── Filtros ────────────────────────────────────────────────────────────────── #}
+<div class="btn-group mb-4" role="group">
+  <a href="?filtro=semana"
+     class="btn btn-sm {% if filtro == 'semana' %}btn-info{% else %}btn-outline-info{% endif %}">
+    Semana
+  </a>
+  <a href="?filtro=mes"
+     class="btn btn-sm {% if filtro == 'mes' %}btn-info{% else %}btn-outline-info{% endif %}">
+    Mês
+  </a>
+  <a href="?filtro=tudo"
+     class="btn btn-sm {% if filtro == 'tudo' %}btn-info{% else %}btn-outline-info{% endif %}">
+    Tudo
+  </a>
+</div>
+
+{# ── Conteúdo ───────────────────────────────────────────────────────────────── #}
+{% if exercicios %}
+  <p class="text-muted small mb-3">{{ exercicios | length }} exercício(s) encontrado(s)</p>
+
+  {% for ex in exercicios %}
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-bold">{{ ex.nome }}</span>
+      <span class="badge bg-secondary">{{ ex.total }} sessão{% if ex.total != 1 %}ões{% endif %}</span>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-dark table-sm table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Treino</th>
+            <th>Séries</th>
+            <th>Carga</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in ex.sessoes %}
+          <tr>
+            <td>{{ s.data }}</td>
+            <td><span class="badge bg-secondary">{{ s.treino }}</span></td>
+            <td>{{ s.series }}</td>
+            <td class="fw-semibold">{{ s.peso }}</td>
+            <td>
+              {% if s.concluido %}
+                <span class="badge bg-success">✓ Concluído</span>
+              {% else %}
+                <span class="badge bg-secondary">Parcial</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+
+{% else %}
+  <div class="text-center text-muted py-5">
+    <p class="fs-5">Nenhum registro encontrado para este período.</p>
+    {% if filtro != 'tudo' %}
+      <a href="?filtro=tudo" class="btn btn-outline-info btn-sm">Ver tudo</a>
+    {% endif %}
+  </div>
+{% endif %}
+
+{% endblock %}

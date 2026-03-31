@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Banco de Exercícios — Painel Treinador{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="/" class="btn btn-sm btn-outline-secondary">← Voltar</a>
+  <h4 class="mb-0">Banco de Exercícios</h4>
+  <span class="badge bg-secondary">{{ exercicios|length }} exercício(s)</span>
+</div>
+
+{# ── Ajuda Cloudinary ─────────────────────────────────────────────────────── #}
+<div class="mb-4">
+  <button class="btn btn-sm btn-outline-secondary" type="button"
+          data-bs-toggle="collapse" data-bs-target="#ajudaCloudinary">
+    ❓ Como hospedar mídias no Cloudinary
+  </button>
+  <div class="collapse mt-3" id="ajudaCloudinary">
+    <div class="card">
+      <div class="card-body small">
+        <ol class="mb-2 text-light" style="line-height:2">
+          <li>Acesse <strong>cloudinary.com</strong> e crie uma conta gratuita (25 GB de armazenamento).</li>
+          <li>No painel do Cloudinary, clique em <strong>Media Library → Upload</strong>.</li>
+          <li>Faça o upload do arquivo (GIF, foto ou vídeo MP4).</li>
+          <li>Clique no arquivo enviado e depois em <strong>Copy URL</strong> (ícone de corrente 🔗).</li>
+          <li>Cole a URL no campo <strong>URL da mídia</strong> ao cadastrar o exercício.</li>
+          <li>Selecione o <strong>Tipo</strong> correto: <em>GIF</em>, <em>Foto</em> ou <em>Vídeo</em>.</li>
+        </ol>
+        <div class="text-light small border border-secondary rounded p-2 mb-0">
+          <strong>Dica:</strong> a URL do Cloudinary termina em <code>.gif</code>, <code>.jpg</code>, <code>.png</code> ou <code>.mp4</code>.
+          Se terminar em outra coisa, verifique se copiou a URL direta (não a URL da página).
+        </div>
+
+        <hr class="border-secondary">
+
+        <p class="text-light fw-bold mb-2">Alternativa: Google Drive</p>
+        <ol class="mb-2 text-light" style="line-height:2">
+          <li>Faça upload do arquivo no Google Drive.</li>
+          <li>Clique com o botão direito → <strong>Compartilhar</strong> → defina como <strong>"Qualquer pessoa com o link"</strong>.</li>
+          <li>Copie o link de compartilhamento. Ele virá neste formato:<br>
+            <code>https://drive.google.com/file/d/<strong>ID_DO_ARQUIVO</strong>/view?usp=sharing</code>
+          </li>
+          <li>Transforme a URL para o formato direto, substituindo pelo padrão abaixo:<br>
+            <code>https://drive.google.com/uc?export=view&id=<strong>ID_DO_ARQUIVO</strong></code>
+          </li>
+          <li>Cole essa URL convertida no campo <strong>URL da mídia</strong>.</li>
+        </ol>
+
+        <div class="row g-2 small">
+          <div class="col-md-6">
+            <div class="border border-success rounded p-2 text-light">
+              <strong class="text-success">✔ Prós</strong>
+              <ul class="mb-0 mt-1">
+                <li>15 GB gratuitos já inclusos na conta Google</li>
+                <li>Fácil de organizar as mídias em pastas</li>
+                <li>Não precisa criar nova conta</li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="border border-danger rounded p-2 text-light">
+              <strong class="text-danger">✘ Contras</strong>
+              <ul class="mb-0 mt-1">
+                <li>Link direto pode parar de funcionar sem aviso</li>
+                <li>Google bloqueia por "cota de tráfego" se muitos clientes acessarem ao mesmo tempo</li>
+                <li>Não funciona de forma confiável para vídeos no app</li>
+                <li>Pode exigir login Google para visualizar</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <p class="text-light mt-2 mb-0 small">💡 Recomendação: use o Google Drive apenas para testes. Para uso em produção com clientes, prefira o <strong>Cloudinary</strong>.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Adicionar exercício ──────────────────────────────────────────────────── #}
+<div class="card mb-4">
+  <div class="card-header fw-bold">Novo exercício</div>
+  <div class="card-body">
+    <form method="post" action="/exercicios/novo"
+          class="d-flex gap-2 flex-wrap align-items-end">
+      <div class="flex-grow-1" style="min-width:200px">
+        <label class="form-label small text-muted mb-1">Nome</label>
+        <input class="form-control bg-dark text-light border-secondary"
+               name="nome" placeholder="Ex: Supino Reto com Barra" required>
+      </div>
+      <div class="flex-grow-1" style="min-width:220px">
+        <label class="form-label small text-muted mb-1">URL da mídia (foto, gif ou vídeo)</label>
+        <input class="form-control bg-dark text-light border-secondary"
+               name="midia_url" placeholder="https://...">
+      </div>
+      <div style="width:130px">
+        <label class="form-label small text-muted mb-1">Tipo</label>
+        <select class="form-select bg-dark text-light border-secondary" name="midia_tipo">
+          <option value="gif">GIF</option>
+          <option value="foto">Foto</option>
+          <option value="video">Vídeo</option>
+        </select>
+      </div>
+      <div class="align-self-end">
+        <button class="btn btn-primary">Adicionar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Lista ────────────────────────────────────────────────────────────────── #}
+{% if exercicios %}
+<div class="card">
+  <table class="table table-dark table-hover mb-0 align-middle">
+    <thead>
+      <tr>
+        <th style="width:36px"></th>
+        <th>Nome</th>
+        <th>URL da mídia</th>
+        <th style="width:110px">Tipo</th>
+        <th style="width:110px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ex in exercicios %}
+      <tr>
+        {# preview inline #}
+        <td>
+          {% if ex.midia_url %}
+            {% if ex.midia_tipo == 'video' %}
+              <a href="{{ ex.midia_url }}" target="_blank" title="Ver vídeo"
+                 class="text-primary">▶</a>
+            {% else %}
+              <a href="{{ ex.midia_url }}" target="_blank">
+                <img src="{{ ex.midia_url }}" style="width:36px;height:36px;object-fit:cover;border-radius:4px"
+                     onerror="this.style.display='none'">
+              </a>
+            {% endif %}
+          {% endif %}
+        </td>
+
+        {# edit form (spans td nome, url, tipo) #}
+        <form method="post" action="/exercicios/{{ ex.id }}/editar" style="display:contents">
+          <td>
+            <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                   name="nome" value="{{ ex.nome }}" required>
+          </td>
+          <td>
+            <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                   name="midia_url" value="{{ ex.midia_url or '' }}" placeholder="https://...">
+          </td>
+          <td>
+            <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                    name="midia_tipo">
+              <option value="gif"   {% if ex.midia_tipo == 'gif'   %}selected{% endif %}>GIF</option>
+              <option value="foto"  {% if ex.midia_tipo == 'foto'  %}selected{% endif %}>Foto</option>
+              <option value="video" {% if ex.midia_tipo == 'video' %}selected{% endif %}>Vídeo</option>
+            </select>
+          </td>
+          <td class="text-end" style="white-space:nowrap">
+            <button class="btn btn-sm btn-outline-success me-1">💾 Salvar</button>
+        </form>
+        <form method="post" action="/exercicios/{{ ex.id }}/excluir" class="d-inline"
+              onsubmit="return confirm('Excluir &quot;{{ ex.nome }}&quot;?')">
+          <button class="btn btn-sm btn-outline-danger">✕ Excluir</button>
+        </form>
+          </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">Nenhum exercício cadastrado ainda.</p>
+{% endif %}
+
+{% endblock %}

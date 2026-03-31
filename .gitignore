@@ -1,0 +1,25 @@
+# Build
+.buildozer/
+bin/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Dados locais
+data/
+
+# Credenciais Firebase (nunca commitar)
+serviceAccount.json
+firebase_config.py
+
+# IDE
+*.code-workspace
+.vscode/
+
+# Claude
+.claude/
+
+# Instalador
+Instalador/

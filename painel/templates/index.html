@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Clientes — Painel Treinador{% endblock %}
+{% block content %}
+<h4 class="mb-4">Clientes cadastrados</h4>
+
+{% if clientes %}
+  <div class="list-group">
+    {% for c in clientes %}
+    <a href="/cliente/{{ c.id }}" class="list-group-item list-group-item-action"
+       style="background:#1e1e1e; border-color:#333; color:#e0e0e0;">
+      {{ c.nome }}
+    </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-muted">Nenhum cliente registrado ainda. O cliente precisa abrir o app para criar a conta.</p>
+{% endif %}
+{% endblock %}
