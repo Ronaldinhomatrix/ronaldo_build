@@ -3,7 +3,8 @@ title = Ronaldo Medeiros Fisiologista
 package.name = ronaldomedeirosfisiologista
 package.domain = com.operantlab
 source.dir = .
-source.include_exts = py,ttf
+source.include_exts = py,ttf,png
+icon.filename = %(source.dir)s/icon_rm.png
 version = 2.3
 
 requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,ffpyplayer
