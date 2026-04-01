@@ -4,7 +4,7 @@ package.name = ronaldomedeirosfisiologista
 package.domain = com.operantlab
 source.dir = .
 source.include_exts = py,ttf
-version = 2.2
+version = 2.3
 
 requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,ffpyplayer
 
