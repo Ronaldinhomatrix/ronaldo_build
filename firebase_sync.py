@@ -110,6 +110,23 @@ def salvar_dados(cliente_id, historico, atividade, obs_cliente=None):
     threading.Thread(target=_run, daemon=True).start()
 
 
+def salvar_atividade(cliente_id, atividade, on_error=None):
+    """
+    Envia apenas o campo 'atividade' ao Firestore (background).
+    Chamado a cada série registrada. Se falhar, chama on_error() para retry posterior.
+    """
+    def _run():
+        try:
+            _patch(f'atletas/{cliente_id}', {
+                'atividade': _para_fs(json.dumps(atividade, ensure_ascii=False)),
+            })
+        except Exception as e:
+            print(f'[Firebase] salvar_atividade: {e}')
+            if on_error:
+                on_error()
+    threading.Thread(target=_run, daemon=True).start()
+
+
 def buscar_cliente_completo(cliente_id):
     """
     Busca todos os dados do cliente (síncrono — chame em thread separada).

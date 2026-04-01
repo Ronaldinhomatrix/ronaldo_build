@@ -199,6 +199,7 @@ class TelaTreino(MDScreen):
             height=dp(52),
             rounded_button=True,
             disabled=True,
+            md_bg_color=(0.25, 0.25, 0.25, 1),
             on_release=lambda x: self._concluir_treino(),
         )
         root.add_widget(self._btn_concluir)
@@ -214,6 +215,8 @@ class TelaTreino(MDScreen):
         self.toolbar.title = f'Treino {treino} — {nome}' if nome else f'Treino {treino}'
         self._cards = []
         self._btn_concluir.disabled = True
+        self._btn_concluir.text = 'Registrar treino completo'
+        self._btn_concluir.md_bg_color = (0.25, 0.25, 0.25, 1)
         if app.progresso_treino.get('treino') != treino:
             app.progresso_treino = {'treino': treino, 'series': {}}
         self._renderizar()
@@ -247,17 +250,25 @@ class TelaTreino(MDScreen):
         if not self._cards:
             return
         todos = all(c._series_feitas >= c._total_series for c in self._cards)
-        self._btn_concluir.disabled = not todos
+        if todos:
+            self._btn_concluir.text = 'Treino Registrado ✓'
+            self._btn_concluir.md_bg_color = COR_CONCLUIDO
+            self._btn_concluir.disabled = False
+            # ── tudo automático ao completar ──────────────────────────────────
+            app = MDApp.get_running_app()
+            app.salvar()
+            app.progresso_treino = {}
+            if app.treino_atual and app.treino_atual == self.treino_atual and app.cliente:
+                app.treino_atual = ''
+                import firebase_sync
+                firebase_sync.limpar_treino_atual(app.cliente['id'])
+        else:
+            self._btn_concluir.text = 'Registrar treino completo'
+            self._btn_concluir.md_bg_color = (0.25, 0.25, 0.25, 1)
+            self._btn_concluir.disabled = True
 
     def _concluir_treino(self):
-        app = MDApp.get_running_app()
-        app.salvar()
-        app.progresso_treino = {}
-        if app.treino_atual and app.treino_atual == self.treino_atual and app.cliente:
-            app.treino_atual = ''
-            import firebase_sync
-            firebase_sync.limpar_treino_atual(app.cliente['id'])
-        app.sm.current = 'home'
+        MDApp.get_running_app().sm.current = 'home'
 
     # ── observações ───────────────────────────────────────────────────────────
 

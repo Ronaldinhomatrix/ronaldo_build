@@ -53,6 +53,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         self.treinos_nomes = self._carregar(TREINOS_NOMES_FILE, {})
         self.historico     = self._carregar(HISTORICO_FILE,     {})
         self.atividade     = self._carregar(ATIVIDADE_FILE,     [])
+        self._atividade_sync_pendente = False
 
         from telas.tela_cadastro import TelaCadastro
         from telas.tela_home import TelaHome
@@ -83,6 +84,9 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         """Chamado quando o app volta ao primeiro plano no Android."""
         if self.cliente:
             threading.Thread(target=self._puxar_treinos_firebase, daemon=True).start()
+            if self._atividade_sync_pendente:
+                self._atividade_sync_pendente = False
+                firebase_sync.salvar_atividade(self.cliente['id'], list(self.atividade))
 
     def _verificar_sync_diario(self, _dt):
         """Dispara sync automático às 5h da manhã, uma vez por dia."""
@@ -97,6 +101,9 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             json.dump(hoje, f)
         if self.cliente:
             threading.Thread(target=self._puxar_treinos_firebase, daemon=True).start()
+        if self._atividade_sync_pendente and self.cliente:
+            self._atividade_sync_pendente = False
+            firebase_sync.salvar_atividade(self.cliente['id'], list(self.atividade))
 
     # ── dados ────────────────────────────────────────────────────────────────
 
@@ -286,6 +293,15 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         self.atividade.append(entrada)
         with open(ATIVIDADE_FILE, 'w', encoding='utf-8') as f:
             json.dump(self.atividade, f, ensure_ascii=False, indent=2)
+        if self.cliente:
+            firebase_sync.salvar_atividade(
+                self.cliente['id'],
+                list(self.atividade),
+                on_error=self._marcar_atividade_pendente,
+            )
+
+    def _marcar_atividade_pendente(self):
+        self._atividade_sync_pendente = True
 
 
 if __name__ == '__main__':
