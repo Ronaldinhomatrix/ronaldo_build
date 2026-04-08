@@ -1,5 +1,3 @@
-import re
-
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.image import AsyncImage
@@ -18,148 +16,110 @@ from kivymd.uix.textfield import MDTextField
 from kivymd.uix.toolbar import MDTopAppBar
 
 
-CARD_H        = dp(80)
+CARD_H        = dp(110)
 COR_CONCLUIDO = get_color_from_hex('#388E3C')
-
-
-def _parse_total_series(series_str):
-    m = re.match(r'\s*(\d+)', str(series_str))
-    return int(m.group(1)) if m else 1
+COR_PENDENTE  = (0.35, 0.35, 0.35, 1)
 
 
 class CardExercicio(MDCard):
-    """Card de exercício com contador de séries, observações e mídia."""
+    """Card de exercício com 3 linhas: nome+vídeo, séries, obs+feito."""
 
     def __init__(self, ex, tela, **kwargs):
         super().__init__(
-            orientation='horizontal',
+            orientation='vertical',
             size_hint=(1, None),
             height=CARD_H,
-            padding=[dp(12), dp(8), dp(8), dp(8)],
-            spacing=dp(4),
+            padding=[dp(12), dp(8), dp(12), dp(8)],
+            spacing=dp(2),
             ripple_behavior=False,
             **kwargs,
         )
         self.ex = ex
         self.tela = tela
-        self._total_series = _parse_total_series(ex.get('series', '1'))
         app = MDApp.get_running_app()
-        saved = app.progresso_treino.get('series', {})
-        self._series_feitas = min(saved.get(ex.get('id', ''), 0), self._total_series)
+        self._feito = app.progresso_treino.get('feitos', {}).get(ex.get('id', ''), False)
         self._build()
-        if self._series_feitas >= self._total_series:
-            Clock.schedule_once(lambda dt: setattr(self._btn_contador, 'md_bg_color', COR_CONCLUIDO), 0)
 
     def _build(self):
-        # ── coluna de info ────────────────────────────────────────────────────
-        info = MDBoxLayout(orientation='vertical', size_hint_x=1)
+        tem_midia = bool(self.ex.get('midia_url', '').strip())
 
-        info.add_widget(MDLabel(
-            text=self.ex['nome'],
-            font_style='Subtitle1',
-            size_hint_y=None,
-            height=dp(28),
-        ))
-
-        rodape = MDBoxLayout(
+        # ── linha 1: nome + vídeo ─────────────────────────────────────────────
+        linha1 = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
             height=dp(32),
-            spacing=dp(4),
         )
-        rodape.add_widget(MDLabel(
-            text=f"{self.ex.get('series', '')}   •   {self.ex.get('peso', '')} kg",
-            font_style='Caption',
-            theme_text_color='Secondary',
+        linha1.add_widget(MDLabel(
+            text=self.ex['nome'],
+            font_style='Subtitle1',
             size_hint_x=1,
         ))
-
-        texto_inicial = '✓' if self._series_feitas >= self._total_series else f'{self._series_feitas}/{self._total_series}'
-        self._btn_contador = MDRaisedButton(
-            text=texto_inicial,
-            size_hint=(None, None),
-            size=(dp(62), dp(28)),
-            font_size='11sp',
-            rounded_button=True,
-        )
-        self._btn_contador.bind(on_release=self._marcar_serie)
-        rodape.add_widget(self._btn_contador)
-
-        info.add_widget(rodape)
-        self.add_widget(info)
-
-        # ── ações ─────────────────────────────────────────────────────────────
-        tem_midia = bool(self.ex.get('midia_url', '').strip())
-        n_botoes  = 4 if tem_midia else 3
-        acoes = MDBoxLayout(
-            orientation='horizontal',
-            size_hint_x=None,
-            width=dp(44 * n_botoes),
-        )
-
-        acoes.add_widget(MDIconButton(
-            icon='chart-line',
-            on_release=lambda x: self.tela._ver_historico(self.ex),
-        ))
-
-        tem_obs = bool(self.ex.get('obs', '').strip())
-        self._btn_obs = MDIconButton(
-            icon='note-text' if tem_obs else 'note-text-outline',
-            theme_text_color='Custom',
-            text_color=(0.357, 0.612, 0.965, 1) if tem_obs else (0.6, 0.6, 0.6, 1),
-            on_release=lambda x: self.tela._editar_obs(self.ex, self),
-        )
-        acoes.add_widget(self._btn_obs)
-
-        acoes.add_widget(MDIconButton(
-            icon='refresh',
-            theme_text_color='Custom',
-            text_color=(0.8, 0.4, 0.4, 1),
-            on_release=lambda x: self._zerar_series(),
-        ))
-
         if tem_midia:
             tipo = self.ex.get('midia_tipo', 'gif')
             icon = 'play-circle-outline' if tipo == 'video' else 'image-outline'
-            acoes.add_widget(MDIconButton(
+            linha1.add_widget(MDIconButton(
                 icon=icon,
                 theme_text_color='Custom',
                 text_color=(0.6, 0.8, 1.0, 1),
+                size_hint_x=None,
                 on_release=lambda x: self.tela._ver_midia(self.ex),
             ))
+        self.add_widget(linha1)
 
-        self.add_widget(acoes)
-
-    # ── contador de séries ────────────────────────────────────────────────────
-
-    def _zerar_series(self):
-        app = MDApp.get_running_app()
-        app.progresso_treino.get('series', {}).pop(self.ex['id'], None)
-        self._series_feitas = 0
-        self._btn_contador.text = f'0/{self._total_series}'
-        self._btn_contador.md_bg_color = self._btn_contador.theme_cls.primary_color
-        self.tela._verificar_conclusao()
-
-    def _marcar_serie(self, *args):
-        if self._series_feitas >= self._total_series:
-            return
-
-        self._series_feitas += 1
-        app = MDApp.get_running_app()
-        app.progresso_treino.setdefault('series', {})[self.ex['id']] = self._series_feitas
-        app.registrar_set(
-            self.tela.treino_atual,
-            self.ex,
-            self._series_feitas,
-            self._total_series,
+        # ── linha 2: séries e rep + peso ──────────────────────────────────────
+        linha2 = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(22),
         )
+        linha2.add_widget(MDLabel(
+            text=f"Séries e Rep: {self.ex.get('series', '')}   •   Peso: {self.ex.get('peso', '')} kg",
+            font_style='Caption',
+            theme_text_color='Secondary',
+        ))
+        self.add_widget(linha2)
 
-        if self._series_feitas < self._total_series:
-            self._btn_contador.text = f'{self._series_feitas}/{self._total_series}'
+        # ── linha 3: observação + feito ───────────────────────────────────────
+        linha3 = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(36),
+            spacing=dp(8),
+        )
+        tem_obs = bool(self.ex.get('obs', '').strip())
+        self._btn_obs = MDFlatButton(
+            text='Observação',
+            theme_text_color='Custom',
+            text_color=(0.357, 0.612, 0.965, 1) if tem_obs else (0.6, 0.6, 0.6, 1),
+            size_hint_x=None,
+            on_release=lambda x: self.tela._editar_obs(self.ex, self),
+        )
+        linha3.add_widget(self._btn_obs)
+        linha3.add_widget(MDBoxLayout(size_hint_x=1))  # espaçador
+        self._btn_feito = MDRaisedButton(
+            text='✓ Feito' if self._feito else 'Feito',
+            size_hint=(None, None),
+            size=(dp(80), dp(28)),
+            font_size='11sp',
+            rounded_button=True,
+            md_bg_color=COR_CONCLUIDO if self._feito else COR_PENDENTE,
+        )
+        self._btn_feito.bind(on_release=self._toggle_feito)
+        linha3.add_widget(self._btn_feito)
+        self.add_widget(linha3)
+
+    # ── botão Feito ───────────────────────────────────────────────────────────
+
+    def _toggle_feito(self, *args):
+        self._feito = not self._feito
+        app = MDApp.get_running_app()
+        app.progresso_treino.setdefault('feitos', {})[self.ex['id']] = self._feito
+        if self._feito:
+            self._btn_feito.text = '✓ Feito'
+            self._btn_feito.md_bg_color = COR_CONCLUIDO
         else:
-            self._btn_contador.text = '✓'
-            self._btn_contador.md_bg_color = COR_CONCLUIDO
-
+            self._btn_feito.text = 'Feito'
+            self._btn_feito.md_bg_color = COR_PENDENTE
         self.tela._verificar_conclusao()
 
 
@@ -218,7 +178,7 @@ class TelaTreino(MDScreen):
         self._btn_concluir.text = 'Registrar treino completo'
         self._btn_concluir.md_bg_color = (0.25, 0.25, 0.25, 1)
         if app.progresso_treino.get('treino') != treino:
-            app.progresso_treino = {'treino': treino, 'series': {}}
+            app.progresso_treino = {'treino': treino, 'feitos': {}}
         self._renderizar()
 
     # ── renderização ──────────────────────────────────────────────────────────
@@ -249,14 +209,15 @@ class TelaTreino(MDScreen):
     def _verificar_conclusao(self):
         if not self._cards:
             return
-        todos = all(c._series_feitas >= c._total_series for c in self._cards)
+        todos = all(c._feito for c in self._cards)
         if todos:
             self._btn_concluir.text = 'Treino Registrado ✓'
             self._btn_concluir.md_bg_color = COR_CONCLUIDO
             self._btn_concluir.disabled = False
             # ── tudo automático ao completar ──────────────────────────────────
             app = MDApp.get_running_app()
-            app.salvar()
+            exercicios = [c.ex for c in self._cards]
+            app.salvar(treino=self.treino_atual, exercicios_concluidos=exercicios)
             app.progresso_treino = {}
             if app.treino_atual and app.treino_atual == self.treino_atual and app.cliente:
                 app.treino_atual = ''
@@ -305,7 +266,6 @@ class TelaTreino(MDScreen):
         app = MDApp.get_running_app()
         app.salvar()
         tem_obs = bool(ex['obs'])
-        card._btn_obs.icon = 'note-text' if tem_obs else 'note-text-outline'
         card._btn_obs.text_color = (0.357, 0.612, 0.965, 1) if tem_obs else (0.6, 0.6, 0.6, 1)
         dlg.dismiss()
         if tem_obs and app.cliente:

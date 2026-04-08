@@ -53,8 +53,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         self.treinos_nomes = self._carregar(TREINOS_NOMES_FILE, {})
         self.historico     = self._carregar(HISTORICO_FILE,     {})
         self.atividade     = self._carregar(ATIVIDADE_FILE,     [])
-        self._atividade_sync_pendente = False
-
         from telas.tela_cadastro import TelaCadastro
         from telas.tela_home import TelaHome
         from telas.tela_treino import TelaTreino
@@ -84,9 +82,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         """Chamado quando o app volta ao primeiro plano no Android."""
         if self.cliente:
             threading.Thread(target=self._puxar_treinos_firebase, daemon=True).start()
-            if self._atividade_sync_pendente:
-                self._atividade_sync_pendente = False
-                firebase_sync.salvar_atividade(self.cliente['id'], list(self.atividade))
 
     def _verificar_sync_diario(self, _dt):
         """Dispara sync automático às 5h da manhã, uma vez por dia."""
@@ -101,9 +96,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             json.dump(hoje, f)
         if self.cliente:
             threading.Thread(target=self._puxar_treinos_firebase, daemon=True).start()
-        if self._atividade_sync_pendente and self.cliente:
-            self._atividade_sync_pendente = False
-            firebase_sync.salvar_atividade(self.cliente['id'], list(self.atividade))
 
     # ── dados ────────────────────────────────────────────────────────────────
 
@@ -137,7 +129,24 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                 return json.load(f)
         return default
 
-    def salvar(self):
+    def salvar(self, treino=None, exercicios_concluidos=None):
+        # Grava atividade dos exercícios concluídos nesta sessão
+        if treino and exercicios_concluidos:
+            agora = datetime.now()
+            for ex in exercicios_concluidos:
+                self.atividade.append({
+                    'data':         agora.strftime('%d/%m/%Y'),
+                    'hora':         agora.strftime('%H:%M:%S'),
+                    'treino':       treino,
+                    'ex_id':        ex['id'],
+                    'nome':         ex['nome'],
+                    'series_total': ex.get('series', ''),
+                    'peso':         ex.get('peso', ''),
+                    'concluido':    True,
+                })
+            with open(ATIVIDADE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(self.atividade, f, ensure_ascii=False, indent=2)
+
         with open(TREINOS_FILE, 'w', encoding='utf-8') as f:
             json.dump(self.treinos, f, ensure_ascii=False, indent=2)
         with open(HISTORICO_FILE, 'w', encoding='utf-8') as f:
@@ -274,34 +283,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.historico.pop(ex['id'], None)
         self.salvar()
 
-    # ── histórico de atividade ───────────────────────────────────────────────
-
-    def registrar_set(self, treino, ex, serie_num, total_series):
-        """Registra a conclusão de uma série. Marca concluido=True na última."""
-        agora = datetime.now()
-        entrada = {
-            'data':         agora.strftime('%d/%m/%Y'),
-            'hora':         agora.strftime('%H:%M:%S'),
-            'treino':       treino,
-            'ex_id':        ex['id'],
-            'nome':         ex['nome'],
-            'serie':        serie_num,
-            'series_total': total_series,
-            'peso':         ex['peso'],
-            'concluido':    serie_num == total_series,
-        }
-        self.atividade.append(entrada)
-        with open(ATIVIDADE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(self.atividade, f, ensure_ascii=False, indent=2)
-        if self.cliente:
-            firebase_sync.salvar_atividade(
-                self.cliente['id'],
-                list(self.atividade),
-                on_error=self._marcar_atividade_pendente,
-            )
-
-    def _marcar_atividade_pendente(self):
-        self._atividade_sync_pendente = True
 
 
 if __name__ == '__main__':
