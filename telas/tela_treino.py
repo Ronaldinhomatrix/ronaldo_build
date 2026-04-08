@@ -16,21 +16,19 @@ from kivymd.uix.textfield import MDTextField
 from kivymd.uix.toolbar import MDTopAppBar
 
 
-CARD_H        = dp(110)
 COR_CONCLUIDO = get_color_from_hex('#388E3C')
-COR_PENDENTE  = (0.35, 0.35, 0.35, 1)
+COR_ACCENT    = get_color_from_hex('#5b9cf6')
 
 
 class CardExercicio(MDCard):
-    """Card de exercício com 3 linhas: nome+vídeo, séries, obs+feito."""
+    """Card de exercício com borda lateral colorida e altura dinâmica."""
 
     def __init__(self, ex, tela, **kwargs):
         super().__init__(
-            orientation='vertical',
+            orientation='horizontal',
             size_hint=(1, None),
-            height=CARD_H,
-            padding=[dp(12), dp(8), dp(12), dp(8)],
-            spacing=dp(2),
+            padding=0,
+            spacing=0,
             ripple_behavior=False,
             **kwargs,
         )
@@ -38,16 +36,37 @@ class CardExercicio(MDCard):
         self.tela = tela
         app = MDApp.get_running_app()
         self._feito = app.progresso_treino.get('feitos', {}).get(ex.get('id', ''), False)
+        self._cor_pendente = tuple(self.md_bg_color)
         self._build()
 
     def _build(self):
         tem_midia = bool(self.ex.get('midia_url', '').strip())
 
-        # ── linha 1: nome + vídeo ─────────────────────────────────────────────
+        # ── borda lateral azul ────────────────────────────────────────────────
+        borda = MDBoxLayout(
+            size_hint=(None, 1),
+            width=dp(4),
+            md_bg_color=COR_ACCENT,
+        )
+        self.add_widget(borda)
+
+        # ── conteúdo vertical (altura calculada pelos filhos) ─────────────────
+        conteudo = MDBoxLayout(
+            orientation='vertical',
+            size_hint=(1, None),
+            padding=[0, 0, 0, dp(8)],
+            spacing=dp(4),
+        )
+        conteudo.bind(minimum_height=conteudo.setter('height'))
+        conteudo.bind(height=self.setter('height'))
+
+        # ── linha 1: nome + vídeo (header com fundo destacado) ───────────────
         linha1 = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(32),
+            height=dp(36),
+            padding=[dp(10), dp(4), dp(4), dp(4)],
+            md_bg_color=(0.357, 0.612, 0.965, 0.13),
         )
         linha1.add_widget(MDLabel(
             text=self.ex['nome'],
@@ -62,22 +81,24 @@ class CardExercicio(MDCard):
                 theme_text_color='Custom',
                 text_color=(0.6, 0.8, 1.0, 1),
                 size_hint_x=None,
+                pos_hint={'center_y': 0.5},
                 on_release=lambda x: self.tela._ver_midia(self.ex),
             ))
-        self.add_widget(linha1)
+        conteudo.add_widget(linha1)
 
         # ── linha 2: séries e rep + peso ──────────────────────────────────────
         linha2 = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
             height=dp(22),
+            padding=[dp(10), 0, dp(12), 0],
         )
         linha2.add_widget(MDLabel(
             text=f"Séries e Rep: {self.ex.get('series', '')}   •   Peso: {self.ex.get('peso', '')} kg",
             font_style='Caption',
             theme_text_color='Secondary',
         ))
-        self.add_widget(linha2)
+        conteudo.add_widget(linha2)
 
         # ── linha 3: observação + feito ───────────────────────────────────────
         linha3 = MDBoxLayout(
@@ -85,13 +106,16 @@ class CardExercicio(MDCard):
             size_hint_y=None,
             height=dp(36),
             spacing=dp(8),
+            padding=[dp(4), 0, dp(8), 0],
         )
         tem_obs = bool(self.ex.get('obs', '').strip())
-        self._btn_obs = MDFlatButton(
-            text='Observação',
-            theme_text_color='Custom',
-            text_color=(0.357, 0.612, 0.965, 1) if tem_obs else (0.6, 0.6, 0.6, 1),
-            size_hint_x=None,
+        self._btn_obs = MDRaisedButton(
+            text='✎ Obs' if tem_obs else 'Obs',
+            size_hint=(None, None),
+            size=(dp(80), dp(28)),
+            font_size='11sp',
+            rounded_button=True,
+            md_bg_color=COR_ACCENT if tem_obs else self._cor_pendente,
             on_release=lambda x: self.tela._editar_obs(self.ex, self),
         )
         linha3.add_widget(self._btn_obs)
@@ -102,11 +126,13 @@ class CardExercicio(MDCard):
             size=(dp(80), dp(28)),
             font_size='11sp',
             rounded_button=True,
-            md_bg_color=COR_CONCLUIDO if self._feito else COR_PENDENTE,
+            md_bg_color=COR_CONCLUIDO if self._feito else self._cor_pendente,
         )
         self._btn_feito.bind(on_release=self._toggle_feito)
         linha3.add_widget(self._btn_feito)
-        self.add_widget(linha3)
+        conteudo.add_widget(linha3)
+
+        self.add_widget(conteudo)
 
     # ── botão Feito ───────────────────────────────────────────────────────────
 
@@ -119,7 +145,7 @@ class CardExercicio(MDCard):
             self._btn_feito.md_bg_color = COR_CONCLUIDO
         else:
             self._btn_feito.text = 'Feito'
-            self._btn_feito.md_bg_color = COR_PENDENTE
+            self._btn_feito.md_bg_color = self._cor_pendente
         self.tela._verificar_conclusao()
 
 
@@ -158,9 +184,8 @@ class TelaTreino(MDScreen):
             size_hint=(1, None),
             height=dp(52),
             rounded_button=True,
-            disabled=True,
             md_bg_color=(0.25, 0.25, 0.25, 1),
-            on_release=lambda x: self._concluir_treino(),
+            on_release=lambda x: self._confirmar_conclusao(),
         )
         root.add_widget(self._btn_concluir)
 
@@ -174,7 +199,6 @@ class TelaTreino(MDScreen):
         nome = app.treinos_nomes.get(treino, '')
         self.toolbar.title = f'Treino {treino} — {nome}' if nome else f'Treino {treino}'
         self._cards = []
-        self._btn_concluir.disabled = True
         self._btn_concluir.text = 'Registrar treino completo'
         self._btn_concluir.md_bg_color = (0.25, 0.25, 0.25, 1)
         if app.progresso_treino.get('treino') != treino:
@@ -213,23 +237,44 @@ class TelaTreino(MDScreen):
         if todos:
             self._btn_concluir.text = 'Treino Registrado ✓'
             self._btn_concluir.md_bg_color = COR_CONCLUIDO
-            self._btn_concluir.disabled = False
-            # ── tudo automático ao completar ──────────────────────────────────
-            app = MDApp.get_running_app()
-            exercicios = [c.ex for c in self._cards]
-            app.salvar(treino=self.treino_atual, exercicios_concluidos=exercicios)
-            app.progresso_treino = {}
-            if app.treino_atual and app.treino_atual == self.treino_atual and app.cliente:
-                app.treino_atual = ''
-                import firebase_sync
-                firebase_sync.limpar_treino_atual(app.cliente['id'])
         else:
             self._btn_concluir.text = 'Registrar treino completo'
             self._btn_concluir.md_bg_color = (0.25, 0.25, 0.25, 1)
-            self._btn_concluir.disabled = True
 
-    def _concluir_treino(self):
-        MDApp.get_running_app().sm.current = 'home'
+    def _confirmar_conclusao(self):
+        dlg = MDDialog(
+            text='Registrar treino completo?',
+            buttons=[
+                MDRaisedButton(
+                    text='Sim',
+                    md_bg_color=COR_CONCLUIDO,
+                    on_release=lambda x: self._executar_conclusao(dlg),
+                ),
+                MDRaisedButton(
+                    text='Não',
+                    md_bg_color=(0.75, 0.1, 0.1, 1),
+                    on_release=lambda x: dlg.dismiss(),
+                ),
+            ],
+        )
+        dlg.open()
+
+    def _executar_conclusao(self, dlg):
+        dlg.dismiss()
+        for card in self._cards:
+            if not card._feito:
+                card._feito = True
+                card._btn_feito.text = '✓ Feito'
+                card._btn_feito.md_bg_color = COR_CONCLUIDO
+        app = MDApp.get_running_app()
+        exercicios = [c.ex for c in self._cards]
+        app.salvar(treino=self.treino_atual, exercicios_concluidos=exercicios)
+        app.progresso_treino = {}
+        if app.treino_atual and app.treino_atual == self.treino_atual and app.cliente:
+            app.treino_atual = ''
+            import firebase_sync
+            firebase_sync.limpar_treino_atual(app.cliente['id'])
+        app.sm.current = 'home'
 
     # ── observações ───────────────────────────────────────────────────────────
 
@@ -266,7 +311,8 @@ class TelaTreino(MDScreen):
         app = MDApp.get_running_app()
         app.salvar()
         tem_obs = bool(ex['obs'])
-        card._btn_obs.text_color = (0.357, 0.612, 0.965, 1) if tem_obs else (0.6, 0.6, 0.6, 1)
+        card._btn_obs.text = '✎ Obs' if tem_obs else 'Obs'
+        card._btn_obs.md_bg_color = COR_ACCENT if tem_obs else self._cor_pendente
         dlg.dismiss()
         if tem_obs and app.cliente:
             import firebase_sync

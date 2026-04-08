@@ -109,16 +109,23 @@ class TelaHome(MDScreen):
         titulo = MDBoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            height=dp(100),
-            spacing=0,
+            spacing=dp(12),
         )
-        titulo.add_widget(MDLabel(
+        titulo.bind(minimum_height=titulo.setter('height'))
+
+        lbl_nome = MDLabel(
             text='Ronaldo Medeiros',
             halign='center',
             font_style='H3',
             size_hint_y=None,
             height=dp(64),
-        ))
+        )
+        lbl_nome.bind(
+            width=lambda inst, w: setattr(inst, 'text_size', (w, None)),
+            texture_size=lambda inst, ts: setattr(inst, 'height', max(dp(64), ts[1])),
+        )
+        titulo.add_widget(lbl_nome)
+
         titulo.add_widget(MDLabel(
             text='Fisiologista',
             halign='center',

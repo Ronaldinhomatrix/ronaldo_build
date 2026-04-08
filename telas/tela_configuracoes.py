@@ -47,6 +47,15 @@ class TelaConfiguracoes(MDScreen):
             height=dp(52),
         ))
 
+        content.add_widget(MDLabel(
+            text='operantlab@operantlab.com.br',
+            halign='center',
+            font_style='Caption',
+            theme_text_color='Secondary',
+            size_hint_y=None,
+            height=dp(24),
+        ))
+
         content.add_widget(MDBoxLayout(size_hint_y=1))
 
         root.add_widget(content)

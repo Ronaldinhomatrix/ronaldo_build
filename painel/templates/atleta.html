@@ -56,6 +56,11 @@
       {% else %}
         <span class="btn btn-sm btn-warning disabled">📌 Treino atual</span>
       {% endif %}
+      {% if banco_treinos %}
+      <button class="btn btn-sm btn-outline-warning"
+              data-bs-toggle="collapse"
+              data-bs-target="#aplicar-{{ letra }}">📋 Aplicar template</button>
+      {% endif %}
       <a href="/cliente/{{ cliente.id }}/treino/{{ letra }}/exportar"
          class="btn btn-sm btn-outline-info" title="Exportar treino como arquivo JSON">⬇ Exportar</a>
       {% if cliente.treinos|length > 1 %}
@@ -67,6 +72,31 @@
       {% endif %}
     </div>
   </div>
+
+  {% if banco_treinos %}
+  <div class="collapse" id="aplicar-{{ letra }}">
+    <div class="p-3 border-bottom border-secondary bg-dark">
+      <form method="post"
+            action="/cliente/{{ cliente.id }}/treino/{{ letra }}/aplicar-template"
+            class="d-flex gap-2 align-items-end flex-wrap"
+            onsubmit="return confirm('Aplicar template substituirá todos os exercícios do Treino {{ letra }}. Continuar?')">
+        <div style="min-width:260px">
+          <label class="form-label small text-secondary mb-1">Template</label>
+          <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                  name="template_id" required>
+            <option value="">— Selecionar —</option>
+            {% for t in banco_treinos %}
+            <option value="{{ t.id }}">{{ t.nome }} ({{ t.exercicios|length }} ex.)</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="align-self-end">
+          <button class="btn btn-sm btn-warning">Aplicar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
 
   <div class="card-body p-0">
     {% if exercicios %}

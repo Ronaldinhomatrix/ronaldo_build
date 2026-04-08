@@ -287,8 +287,9 @@ def ver_cliente(cliente_id):
     cliente = _carregar_cliente(cliente_id)
     if cliente is None:
         return 'Cliente não encontrado.', 404
-    banco = _carregar_banco()
-    return render_template('atleta.html', cliente=cliente, banco=banco)
+    banco          = _carregar_banco()
+    banco_treinos_ = _carregar_banco_treinos()
+    return render_template('atleta.html', cliente=cliente, banco=banco, banco_treinos=banco_treinos_)
 
 
 @app.route('/cliente/<cliente_id>/exercicio/add', methods=['POST'])
@@ -533,6 +534,153 @@ def importar_treino(cliente_id):
     _doc(cliente_id).update({
         'treinos':        json.dumps(cliente['treinos'], ensure_ascii=False),
         'treinos_nomes':  json.dumps(cliente['treinos_nomes'], ensure_ascii=False),
+        'trainer_editou': True,
+    })
+    return redirect(url_for('ver_cliente', cliente_id=cliente_id))
+
+
+# ── Banco de Treinos ──────────────────────────────────────────────────────────
+
+def _col_banco_treinos():
+    return db.collection('banco_treinos')
+
+
+def _carregar_banco_treinos():
+    return [
+        {'id': d.id, 'nome': d.to_dict().get('nome', ''),
+         'exercicios': json.loads(d.to_dict().get('exercicios', '[]'))}
+        for d in _col_banco_treinos().order_by('nome').stream()
+    ]
+
+
+def _carregar_template(template_id):
+    snap = _col_banco_treinos().document(template_id).get()
+    if not snap.exists:
+        return None
+    d = snap.to_dict()
+    return {
+        'id':         template_id,
+        'nome':       d.get('nome', ''),
+        'exercicios': json.loads(d.get('exercicios', '[]')),
+    }
+
+
+@app.route('/banco-treinos')
+@login_required
+def banco_treinos():
+    templates = _carregar_banco_treinos()
+    return render_template('banco_treinos.html', templates=templates)
+
+
+@app.route('/banco-treinos/novo', methods=['POST'])
+@login_required
+def banco_treinos_novo():
+    nome = request.form.get('nome', '').strip()
+    if nome:
+        _col_banco_treinos().add({'nome': nome, 'exercicios': '[]'})
+    return redirect(url_for('banco_treinos'))
+
+
+@app.route('/banco-treinos/<template_id>')
+@login_required
+def banco_treino_detalhe(template_id):
+    template = _carregar_template(template_id)
+    if template is None:
+        return 'Template não encontrado.', 404
+    banco = _carregar_banco()
+    return render_template('banco_treino_detalhe.html', template=template, banco=banco)
+
+
+@app.route('/banco-treinos/<template_id>/renomear', methods=['POST'])
+@login_required
+def banco_treino_renomear(template_id):
+    nome = request.form.get('nome', '').strip()
+    if nome:
+        _col_banco_treinos().document(template_id).update({'nome': nome})
+    return redirect(url_for('banco_treino_detalhe', template_id=template_id))
+
+
+@app.route('/banco-treinos/<template_id>/excluir', methods=['POST'])
+@login_required
+def banco_treino_excluir(template_id):
+    _col_banco_treinos().document(template_id).delete()
+    return redirect(url_for('banco_treinos'))
+
+
+@app.route('/banco-treinos/<template_id>/exercicio/add', methods=['POST'])
+@login_required
+def banco_treino_add_ex(template_id):
+    template = _carregar_template(template_id)
+    if template is None:
+        return 'Template não encontrado.', 404
+    nome       = request.form.get('nome', '').strip()
+    series     = request.form.get('series', '').strip()
+    peso       = request.form.get('peso', '').strip()
+    midia_url  = request.form.get('midia_url', '').strip()
+    midia_tipo = request.form.get('midia_tipo', '').strip()
+    if nome:
+        ex = {'id': str(uuid.uuid4()), 'nome': nome, 'series': series, 'peso': peso}
+        if midia_url:
+            ex['midia_url']  = midia_url
+            ex['midia_tipo'] = midia_tipo
+        template['exercicios'].append(ex)
+        _col_banco_treinos().document(template_id).update(
+            {'exercicios': json.dumps(template['exercicios'], ensure_ascii=False)}
+        )
+    return redirect(url_for('banco_treino_detalhe', template_id=template_id))
+
+
+@app.route('/banco-treinos/<template_id>/exercicio/edit', methods=['POST'])
+@login_required
+def banco_treino_edit_ex(template_id):
+    template = _carregar_template(template_id)
+    if template is None:
+        return 'Template não encontrado.', 404
+    ex_id  = request.form.get('ex_id', '')
+    series = request.form.get('series', '').strip()
+    peso   = request.form.get('peso', '').strip()
+    for ex in template['exercicios']:
+        if ex['id'] == ex_id:
+            ex['series'] = series
+            ex['peso']   = peso
+            break
+    _col_banco_treinos().document(template_id).update(
+        {'exercicios': json.dumps(template['exercicios'], ensure_ascii=False)}
+    )
+    return redirect(url_for('banco_treino_detalhe', template_id=template_id))
+
+
+@app.route('/banco-treinos/<template_id>/exercicio/remove', methods=['POST'])
+@login_required
+def banco_treino_remove_ex(template_id):
+    template = _carregar_template(template_id)
+    if template is None:
+        return 'Template não encontrado.', 404
+    ex_id = request.form.get('ex_id', '')
+    template['exercicios'] = [e for e in template['exercicios'] if e['id'] != ex_id]
+    _col_banco_treinos().document(template_id).update(
+        {'exercicios': json.dumps(template['exercicios'], ensure_ascii=False)}
+    )
+    return redirect(url_for('banco_treino_detalhe', template_id=template_id))
+
+
+@app.route('/cliente/<cliente_id>/treino/<letra>/aplicar-template', methods=['POST'])
+@login_required
+def aplicar_template(cliente_id, letra):
+    template_id = request.form.get('template_id', '').strip()
+    template = _carregar_template(template_id)
+    if template is None:
+        return 'Template não encontrado.', 404
+    cliente = _carregar_cliente(cliente_id)
+    if cliente is None:
+        return 'Cliente não encontrado.', 404
+    novos = [
+        {**{k: v for k, v in ex.items() if k != 'id'}, 'id': str(uuid.uuid4())}
+        for ex in template['exercicios']
+    ]
+    cliente['treinos'][letra] = novos
+    _doc(cliente_id).update({
+        'treinos':        json.dumps(cliente['treinos'], ensure_ascii=False),
         'trainer_editou': True,
     })
     return redirect(url_for('ver_cliente', cliente_id=cliente_id))

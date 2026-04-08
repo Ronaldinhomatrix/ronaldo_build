@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}{{ template.nome }} — Banco de Treinos{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <a href="/banco-treinos" class="btn btn-sm btn-outline-secondary">← Voltar</a>
+  <h4 class="mb-0">{{ template.nome }}</h4>
+  <form method="post" action="/banco-treinos/{{ template.id }}/renomear"
+        class="d-flex gap-2 align-items-center ms-2">
+    <input class="form-control form-control-sm bg-dark text-light border-secondary"
+           name="nome" value="{{ template.nome }}" placeholder="Nome" style="width:240px" required>
+    <button class="btn btn-sm btn-outline-success">💾 Renomear</button>
+  </form>
+  <form method="post" action="/banco-treinos/{{ template.id }}/excluir"
+        class="ms-auto"
+        onsubmit="return confirm('Excluir este template?')">
+    <button class="btn btn-sm btn-outline-danger">🗑 Excluir template</button>
+  </form>
+</div>
+
+{# ── Lista de exercícios ────────────────────────────────────────────────────── #}
+{% if template.exercicios %}
+<div class="card mb-4">
+  <table class="table table-dark table-hover mb-0 align-middle">
+    <thead>
+      <tr class="text-light">
+        <th style="width:36px"></th>
+        <th>Exercício</th>
+        <th style="width:140px">Séries e Rep</th>
+        <th style="width:130px">Carga</th>
+        <th style="width:110px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ex in template.exercicios %}
+      <tr>
+        <td>
+          {% if ex.midia_url %}
+            {% if ex.midia_tipo == 'video' %}
+              <a href="{{ ex.midia_url }}" target="_blank" class="text-primary fs-5">▶</a>
+            {% else %}
+              <a href="{{ ex.midia_url }}" target="_blank">
+                <img src="{{ ex.midia_url }}"
+                     style="width:36px;height:36px;object-fit:cover;border-radius:4px"
+                     onerror="this.style.display='none'">
+              </a>
+            {% endif %}
+          {% endif %}
+        </td>
+        <td class="fw-semibold text-light">{{ ex.nome }}</td>
+        <form method="post" action="/banco-treinos/{{ template.id }}/exercicio/edit"
+              style="display:contents">
+          <input type="hidden" name="ex_id" value="{{ ex.id }}">
+          <td>
+            <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                   name="series" value="{{ ex.series }}" placeholder="ex: 3x12" required>
+          </td>
+          <td>
+            <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                   name="peso" value="{{ ex.peso }}" placeholder="ex: 80kg" required>
+          </td>
+          <td class="text-end" style="white-space:nowrap">
+            <button class="btn btn-sm btn-outline-success me-1">💾 Salvar</button>
+        </form>
+        <form method="post" action="/banco-treinos/{{ template.id }}/exercicio/remove"
+              class="d-inline"
+              onsubmit="return confirm('Remover {{ ex.nome }}?')">
+          <input type="hidden" name="ex_id" value="{{ ex.id }}">
+          <button class="btn btn-sm btn-outline-danger">✕</button>
+        </form>
+          </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted mb-4">Nenhum exercício neste template ainda.</p>
+{% endif %}
+
+{# ── Adicionar exercício ───────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header fw-bold">Adicionar exercício</div>
+  <div class="card-body">
+    <form method="post" action="/banco-treinos/{{ template.id }}/exercicio/add"
+          class="d-flex gap-2 flex-wrap align-items-end"
+          onsubmit="return validarPicker()">
+      <input type="hidden" name="nome"       id="nome-ex">
+      <input type="hidden" name="midia_url"  id="midia_url-ex">
+      <input type="hidden" name="midia_tipo" id="midia_tipo-ex">
+
+      <div style="min-width:220px">
+        <label class="form-label small text-secondary mb-1">Exercício</label>
+        <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                id="sel-ex" onchange="selecionarEx()">
+          <option value="">— Escolher do banco —</option>
+          {% for ex in banco %}
+          <option value="{{ ex.id }}"
+                  data-nome="{{ ex.nome }}"
+                  data-url="{{ ex.midia_url or '' }}"
+                  data-tipo="{{ ex.midia_tipo or '' }}">{{ ex.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label small text-secondary mb-1">Séries e Rep</label>
+        <input class="form-control form-control-sm bg-dark text-light border-secondary"
+               name="series" placeholder="ex: 3x12" style="width:110px" required>
+      </div>
+      <div>
+        <label class="form-label small text-secondary mb-1">Carga</label>
+        <input class="form-control form-control-sm bg-dark text-light border-secondary"
+               name="peso" placeholder="ex: 80kg" style="width:100px" required>
+      </div>
+      <div class="align-self-end">
+        <button class="btn btn-sm btn-primary">Adicionar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function selecionarEx() {
+  const sel = document.getElementById('sel-ex');
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('nome-ex').value      = opt.dataset.nome || '';
+  document.getElementById('midia_url-ex').value  = opt.dataset.url  || '';
+  document.getElementById('midia_tipo-ex').value = opt.dataset.tipo || '';
+}
+function validarPicker() {
+  if (!document.getElementById('nome-ex').value) {
+    alert('Escolha um exercício do banco antes de adicionar.');
+    return false;
+  }
+  return true;
+}
+</script>
+
+{% endblock %}
