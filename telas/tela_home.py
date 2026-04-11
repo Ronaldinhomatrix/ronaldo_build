@@ -2,7 +2,9 @@ import threading
 from datetime import datetime
 
 from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.metrics import dp
+from kivy.uix.image import Image as KivyImage
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDFlatButton, MDIconButton, MDRaisedButton
@@ -104,7 +106,7 @@ class TelaHome(MDScreen):
             spacing=dp(16),
         )
 
-        content.add_widget(MDBoxLayout(size_hint_y=0.2))
+        content.add_widget(MDBoxLayout(size_hint_y=0.1))
 
         titulo = MDBoxLayout(
             orientation='vertical',
@@ -112,6 +114,24 @@ class TelaHome(MDScreen):
             spacing=dp(12),
         )
         titulo.bind(minimum_height=titulo.setter('height'))
+
+        # ── foto ──────────────────────────────────────────────────────────────
+        tamanho_foto = Window.height * 0.26
+        foto_row = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=tamanho_foto,
+        )
+        foto_row.add_widget(MDBoxLayout(size_hint_x=1))
+        foto_row.add_widget(KivyImage(
+            source='foto_perfil.jpg',
+            size_hint=(None, None),
+            size=(tamanho_foto, tamanho_foto),
+            allow_stretch=True,
+            keep_ratio=True,
+        ))
+        foto_row.add_widget(MDBoxLayout(size_hint_x=1))
+        titulo.add_widget(foto_row)
 
         lbl_nome = MDLabel(
             text='Ronaldo Medeiros',
@@ -125,6 +145,8 @@ class TelaHome(MDScreen):
             texture_size=lambda inst, ts: setattr(inst, 'height', max(dp(64), ts[1])),
         )
         titulo.add_widget(lbl_nome)
+
+        titulo.add_widget(MDBoxLayout(size_hint_y=None, height=dp(8)))
 
         titulo.add_widget(MDLabel(
             text='Fisiologista',

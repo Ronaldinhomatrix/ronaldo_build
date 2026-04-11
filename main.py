@@ -5,6 +5,8 @@ import threading
 import uuid
 from datetime import datetime
 
+os.environ['KIVY_VIDEO'] = 'ffpyplayer'
+
 from kivy.clock import Clock
 from kivy.core.text import LabelBase
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
