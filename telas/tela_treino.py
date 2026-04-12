@@ -312,7 +312,7 @@ class TelaTreino(MDScreen):
         app.salvar()
         tem_obs = bool(ex['obs'])
         card._btn_obs.text = '✎ Obs' if tem_obs else 'Obs'
-        card._btn_obs.md_bg_color = COR_ACCENT if tem_obs else self._cor_pendente
+        card._btn_obs.md_bg_color = COR_ACCENT if tem_obs else card._cor_pendente
         dlg.dismiss()
         if tem_obs and app.cliente:
             import firebase_sync

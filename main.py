@@ -226,13 +226,13 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             backup = {**self.cliente, 'treinos': self.treinos, 'treinos_nomes': self.treinos_nomes, 'historico': self.historico}
             with open(self._CLIENTE_BACKUP, 'w', encoding='utf-8') as f:
                 json.dump(backup, f, ensure_ascii=False, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f'[Backup] Erro ao salvar backup na Downloads: {e}')
         # Atualiza a tela home se estiver visível
         try:
             self.sm.get_screen('home')._reconstruir_botoes()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f'[Firebase] Erro ao atualizar tela home: {e}')
         print('[Firebase] Treinos atualizados pelo treinador.')
 
     # ── gerenciamento de treinos ──────────────────────────────────────────────
