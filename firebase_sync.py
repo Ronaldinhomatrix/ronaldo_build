@@ -7,6 +7,7 @@ import ssl
 import threading
 import urllib.error
 import urllib.request
+from datetime import datetime
 
 from firebase_config import API_KEY, PROJECT_ID
 
@@ -78,12 +79,13 @@ def criar_cliente(cliente_id, nome):
     def _run():
         try:
             _patch(f'atletas/{cliente_id}', {
-                'nome':          _para_fs(nome),
-                'treinos':       _para_fs(json.dumps({}, ensure_ascii=False)),
-                'historico':     _para_fs('{}'),
-                'atividade':     _para_fs('[]'),
-                'obs_cliente':   _para_fs({}),
+                'nome':           _para_fs(nome),
+                'treinos':        _para_fs(json.dumps({}, ensure_ascii=False)),
+                'historico':      _para_fs('{}'),
+                'atividade':      _para_fs('[]'),
+                'obs_cliente':    _para_fs({}),
                 'trainer_editou': _para_fs(False),
+                'data_admissao':  _para_fs(datetime.now().strftime('%d/%m/%Y')),
             })
         except Exception as e:
             print(f'[Firebase] criar_cliente: {e}')

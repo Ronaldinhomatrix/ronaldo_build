@@ -2,6 +2,7 @@
 Painel web do treinador — Ronaldo Medeiros Fisiologista
 Roda localmente: python painel/app.py
 """
+import csv
 import json
 import os
 import uuid
@@ -236,7 +237,11 @@ def logout():
 def index():
     docs = _col().stream()
     clientes = [
-        {'id': d.id, 'nome': d.to_dict().get('nome', '(sem nome)')}
+        {
+            'id':            d.id,
+            'nome':          d.to_dict().get('nome', '(sem nome)'),
+            'data_admissao': d.to_dict().get('data_admissao', ''),
+        }
         for d in docs
     ]
     clientes.sort(key=lambda c: c['nome'])
@@ -298,6 +303,7 @@ def add_exercicio(cliente_id):
     treino      = request.form['treino']
     nome        = request.form.get('nome', '').strip()
     series      = request.form.get('series', '').strip()
+    repeticoes  = request.form.get('repeticoes', '').strip()
     peso        = request.form.get('peso', '').strip()
     midia_url   = request.form.get('midia_url', '').strip()
     midia_tipo  = request.form.get('midia_tipo', '').strip()
@@ -310,7 +316,8 @@ def add_exercicio(cliente_id):
     if cliente is None:
         return 'Cliente não encontrado.', 404
 
-    ex = {'id': str(uuid.uuid4()), 'nome': nome, 'series': series, 'peso': peso}
+    ex = {'id': str(uuid.uuid4()), 'nome': nome, 'series': series,
+          'repeticoes': repeticoes, 'peso': peso}
     if midia_url:
         ex['midia_url']  = midia_url
         ex['midia_tipo'] = midia_tipo
@@ -348,10 +355,11 @@ def remove_exercicio(cliente_id):
 @app.route('/cliente/<cliente_id>/exercicio/edit', methods=['POST'])
 @login_required
 def edit_exercicio(cliente_id):
-    treino = request.form['treino']
-    ex_id  = request.form['ex_id']
-    series = request.form.get('series', '').strip()
-    peso   = request.form.get('peso', '').strip()
+    treino     = request.form['treino']
+    ex_id      = request.form['ex_id']
+    series     = request.form.get('series', '').strip()
+    repeticoes = request.form.get('repeticoes', '').strip()
+    peso       = request.form.get('peso', '').strip()
 
     cliente = _carregar_cliente(cliente_id)
     if cliente is None:
@@ -359,8 +367,9 @@ def edit_exercicio(cliente_id):
 
     for ex in cliente['treinos'].get(treino, []):
         if ex['id'] == ex_id:
-            ex['series'] = series
-            ex['peso']   = peso
+            ex['series']     = series
+            ex['repeticoes'] = repeticoes
+            ex['peso']       = peso
             break
     _doc(cliente_id).update({
         'treinos':        json.dumps(cliente['treinos'], ensure_ascii=False),
@@ -495,6 +504,85 @@ def exportar_treino(cliente_id, letra):
     )
 
 
+@app.route('/cliente/<cliente_id>/exportar/completo')
+@login_required
+def exportar_completo(cliente_id):
+    snap = _doc(cliente_id).get()
+    if not snap.exists:
+        return 'Cliente não encontrado.', 404
+    d = snap.to_dict()
+
+    treinos         = json.loads(d.get('treinos', '{}'))
+    treinos_nomes   = json.loads(d.get('treinos_nomes', '{}'))
+    atividade       = json.loads(d.get('atividade', '[]'))
+    historico_pesos = json.loads(d.get('historico', '{}'))
+    obs_cliente     = d.get('obs_cliente', {}) or {}
+
+    dados = {
+        'exportado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
+        'versao': '1.0',
+        'cliente': {
+            'nome':         d.get('nome', ''),
+            'treino_atual': d.get('treino_atual', ''),
+        },
+        'treinos': {
+            letra: {
+                'nome':       treinos_nomes.get(letra, ''),
+                'exercicios': exercicios,
+            }
+            for letra, exercicios in treinos.items()
+        },
+        'atividade':       atividade,
+        'historico_pesos': historico_pesos,
+        'obs_cliente':     obs_cliente,
+    }
+
+    conteudo     = json.dumps(dados, ensure_ascii=False, indent=2).encode('utf-8')
+    nome_cliente = d.get('nome', 'cliente').replace(' ', '_')
+    nome_arquivo = f'dados_{nome_cliente}_{datetime.now().strftime("%Y%m%d")}.json'
+
+    return send_file(
+        io.BytesIO(conteudo),
+        mimetype='application/json',
+        as_attachment=True,
+        download_name=nome_arquivo,
+    )
+
+
+@app.route('/cliente/<cliente_id>/exportar/progresso')
+@login_required
+def exportar_progresso(cliente_id):
+    cliente = _carregar_cliente(cliente_id)
+    if cliente is None:
+        return 'Cliente não encontrado.', 404
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(['Data', 'Treino', 'Exercício', 'Séries', 'Repetições', 'Carga', 'Concluído'])
+
+    for sessao in cliente['sessoes']:
+        for ex in sessao['exercicios']:
+            writer.writerow([
+                sessao.get('data', ''),
+                sessao.get('treino', ''),
+                ex.get('nome', ''),
+                ex.get('series', ''),
+                ex.get('peso', ''),
+                'Sim' if ex.get('concluido') else 'Não',
+            ])
+
+    conteudo     = buf.getvalue().encode('utf-8-sig')  # utf-8-sig: Excel abre sem problema de acentos
+    nome_cliente = cliente['nome'].replace(' ', '_')
+    nome_arquivo = f'progresso_{nome_cliente}_{datetime.now().strftime("%Y%m%d")}.csv'
+
+    return send_file(
+        io.BytesIO(conteudo),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=nome_arquivo,
+    )
+
+
 @app.route('/cliente/<cliente_id>/treino/importar', methods=['POST'])
 @login_required
 def importar_treino(cliente_id):
@@ -615,11 +703,13 @@ def banco_treino_add_ex(template_id):
         return 'Template não encontrado.', 404
     nome       = request.form.get('nome', '').strip()
     series     = request.form.get('series', '').strip()
+    repeticoes = request.form.get('repeticoes', '').strip()
     peso       = request.form.get('peso', '').strip()
     midia_url  = request.form.get('midia_url', '').strip()
     midia_tipo = request.form.get('midia_tipo', '').strip()
     if nome:
-        ex = {'id': str(uuid.uuid4()), 'nome': nome, 'series': series, 'peso': peso}
+        ex = {'id': str(uuid.uuid4()), 'nome': nome, 'series': series,
+              'repeticoes': repeticoes, 'peso': peso}
         if midia_url:
             ex['midia_url']  = midia_url
             ex['midia_tipo'] = midia_tipo
@@ -636,13 +726,15 @@ def banco_treino_edit_ex(template_id):
     template = _carregar_template(template_id)
     if template is None:
         return 'Template não encontrado.', 404
-    ex_id  = request.form.get('ex_id', '')
-    series = request.form.get('series', '').strip()
-    peso   = request.form.get('peso', '').strip()
+    ex_id      = request.form.get('ex_id', '')
+    series     = request.form.get('series', '').strip()
+    repeticoes = request.form.get('repeticoes', '').strip()
+    peso       = request.form.get('peso', '').strip()
     for ex in template['exercicios']:
         if ex['id'] == ex_id:
-            ex['series'] = series
-            ex['peso']   = peso
+            ex['series']     = series
+            ex['repeticoes'] = repeticoes
+            ex['peso']       = peso
             break
     _col_banco_treinos().document(template_id).update(
         {'exercicios': json.dumps(template['exercicios'], ensure_ascii=False)}

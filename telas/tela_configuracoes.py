@@ -1,4 +1,5 @@
 from kivy.metrics import dp
+from kivy.uix.image import Image as KivyImage
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.label import MDLabel
@@ -27,25 +28,21 @@ class TelaConfiguracoes(MDScreen):
 
         content.add_widget(MDBoxLayout(size_hint_y=1))
 
-        content.add_widget(MDLabel(
-            text='Desenvolvido por',
-            halign='center',
-            font_style='Subtitle1',
-            theme_text_color='Secondary',
+        logo_row = MDBoxLayout(
+            orientation='horizontal',
             size_hint_y=None,
-            height=dp(32),
+            height=dp(80),
+        )
+        logo_row.add_widget(MDBoxLayout(size_hint_x=1))
+        logo_row.add_widget(KivyImage(
+            source='Logo_Marca.jpg',
+            size_hint=(None, None),
+            size=(dp(220), dp(80)),
+            allow_stretch=True,
+            keep_ratio=True,
         ))
-        content.add_widget(MDLabel(
-            text='[color=#FFFFFF]Operant[/color][color=#5b9cf6]Lab[/color]',
-            markup=True,
-            halign='center',
-            font_name='ErasBoldITC',
-            font_style='H4',
-            theme_text_color='Custom',
-            text_color=(1, 1, 1, 1),
-            size_hint_y=None,
-            height=dp(52),
-        ))
+        logo_row.add_widget(MDBoxLayout(size_hint_x=1))
+        content.add_widget(logo_row)
 
         content.add_widget(MDLabel(
             text='operantlab@operantlab.com.br',

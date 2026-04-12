@@ -97,17 +97,22 @@ class TelaHome(MDScreen):
         self._build()
 
     def _build(self):
+        from kivy.uix.scrollview import ScrollView
+
         root = MDBoxLayout(orientation='vertical')
 
-        # ── conteúdo ─────────────────────────────────────────────────────────
+        # ── área rolável ──────────────────────────────────────────────────────
+        scroll = ScrollView(size_hint=(1, 1))
+
         content = MDBoxLayout(
             orientation='vertical',
-            padding=dp(40),
+            padding=[dp(40), dp(24), dp(40), dp(24)],
             spacing=dp(16),
+            size_hint_y=None,
         )
+        content.bind(minimum_height=content.setter('height'))
 
-        content.add_widget(MDBoxLayout(size_hint_y=0.1))
-
+        # ── bloco título (foto + nome + fisiologista) ─────────────────────────
         titulo = MDBoxLayout(
             orientation='vertical',
             size_hint_y=None,
@@ -115,7 +120,6 @@ class TelaHome(MDScreen):
         )
         titulo.bind(minimum_height=titulo.setter('height'))
 
-        # ── foto ──────────────────────────────────────────────────────────────
         tamanho_foto = Window.height * 0.26
         foto_row = MDBoxLayout(
             orientation='horizontal',
@@ -159,8 +163,6 @@ class TelaHome(MDScreen):
         ))
         content.add_widget(titulo)
 
-        content.add_widget(MDBoxLayout(size_hint_y=0.03))
-
         self._lbl_saudacao = MDLabel(
             text='',
             halign='center',
@@ -181,8 +183,6 @@ class TelaHome(MDScreen):
             height=dp(36),
         ))
 
-        content.add_widget(MDBoxLayout(size_hint_y=0.05))
-
         # Container dinâmico dos botões
         self._container = MDBoxLayout(
             orientation='vertical',
@@ -192,8 +192,10 @@ class TelaHome(MDScreen):
         self._container.bind(minimum_height=self._container.setter('height'))
         content.add_widget(self._container)
 
-        content.add_widget(MDBoxLayout(size_hint_y=0.08))
+        scroll.add_widget(content)
+        root.add_widget(scroll)
 
+        # ── rodapé fixo (sempre visível, fora do scroll) ──────────────────────
         self._lbl_sync = MDLabel(
             text='',
             halign='center',
@@ -202,7 +204,7 @@ class TelaHome(MDScreen):
             size_hint_y=None,
             height=dp(20),
         )
-        content.add_widget(self._lbl_sync)
+        root.add_widget(self._lbl_sync)
 
         rodape = MDBoxLayout(
             orientation='horizontal',
@@ -228,12 +230,7 @@ class TelaHome(MDScreen):
             height=dp(44),
             on_release=lambda x: self._abrir_configuracoes(),
         ))
-        content.add_widget(rodape)
-
-        content.add_widget(MDBoxLayout(size_hint_y=1))
-
-
-        root.add_widget(content)
+        root.add_widget(rodape)
 
         self.add_widget(root)
 

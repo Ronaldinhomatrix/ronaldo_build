@@ -6,9 +6,10 @@
 {% if clientes %}
   <div class="list-group">
     {% for c in clientes %}
-    <a href="/cliente/{{ c.id }}" class="list-group-item list-group-item-action"
+    <a href="/cliente/{{ c.id }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
        style="background:#1e1e1e; border-color:#333; color:#e0e0e0;">
-      {{ c.nome }}
+      <span>{{ c.nome }}</span>
+      <span class="text-muted small">{{ c.data_admissao or '—' }}</span>
     </a>
     {% endfor %}
   </div>

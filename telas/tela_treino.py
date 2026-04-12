@@ -1,4 +1,5 @@
 from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.uix.image import AsyncImage
 from kivy.uix.popup import Popup
@@ -18,6 +19,7 @@ from kivymd.uix.toolbar import MDTopAppBar
 
 COR_CONCLUIDO = get_color_from_hex('#388E3C')
 COR_ACCENT    = get_color_from_hex('#5b9cf6')
+COR_OBS       = get_color_from_hex('#F9A825')
 
 
 class CardExercicio(MDCard):
@@ -51,26 +53,31 @@ class CardExercicio(MDCard):
         self.add_widget(borda)
 
         # ── conteúdo vertical (altura calculada pelos filhos) ─────────────────
+        _esp_linhas = Window.height * 0.008   # espaço entre linhas do card
+        _pad_inf    = Window.height * 0.012   # padding inferior do card
+
         conteudo = MDBoxLayout(
             orientation='vertical',
             size_hint=(1, None),
-            padding=[0, 0, 0, dp(8)],
-            spacing=dp(4),
+            padding=[0, 0, 0, _pad_inf],
+            spacing=_esp_linhas,
         )
         conteudo.bind(minimum_height=conteudo.setter('height'))
         conteudo.bind(height=self.setter('height'))
 
         # ── linha 1: nome + vídeo (header com fundo destacado) ───────────────
+        _h1 = Window.height * 0.073   # altura linha 1 proporcional à tela
+
         linha1 = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(36),
+            height=_h1,
             padding=[dp(10), dp(4), dp(4), dp(4)],
             md_bg_color=(0.357, 0.612, 0.965, 0.13),
         )
         linha1.add_widget(MDLabel(
             text=self.ex['nome'],
-            font_style='Subtitle1',
+            font_size='26sp',
             size_hint_x=1,
         ))
         if tem_midia:
@@ -87,35 +94,49 @@ class CardExercicio(MDCard):
         conteudo.add_widget(linha1)
 
         # ── linha 2: séries e rep + peso ──────────────────────────────────────
+        _h2 = Window.height * 0.031   # altura linha 2 proporcional à tela
+
         linha2 = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(22),
+            height=_h2,
             padding=[dp(10), 0, dp(12), 0],
         )
+        series     = self.ex.get('series', '')
+        repeticoes = self.ex.get('repeticoes', '')
+        peso       = self.ex.get('peso', '')
+        if repeticoes:
+            info = f"Séries: {series}   •   Reps: {repeticoes}   •   Peso: {peso} kg"
+        else:
+            info = f"Séries e Rep: {series}   •   Peso: {peso} kg"
         linha2.add_widget(MDLabel(
-            text=f"Séries e Rep: {self.ex.get('series', '')}   •   Peso: {self.ex.get('peso', '')} kg",
-            font_style='Caption',
+            text=info,
+            font_size='16sp',
             theme_text_color='Secondary',
         ))
         conteudo.add_widget(linha2)
 
         # ── linha 3: observação + feito ───────────────────────────────────────
+        _fs3   = '13sp'   # linha 3: botões, menor que linhas 1 e 2
+        _h3    = Window.height * 0.081   # ≈ dp(36) × 1.6 em tela padrão
+        _btn_w = Window.width  * 0.320   # ≈ dp(80) × 1.6 em tela padrão
+        _btn_h = Window.height * 0.063   # ≈ dp(28) × 1.6 em tela padrão
+
         linha3 = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(36),
+            height=_h3,
             spacing=dp(8),
             padding=[dp(4), 0, dp(8), 0],
         )
         tem_obs = bool(self.ex.get('obs', '').strip())
         self._btn_obs = MDRaisedButton(
-            text='✎ Obs' if tem_obs else 'Obs',
+            text='Observação Registrada' if tem_obs else 'Adicionar Observação',
             size_hint=(None, None),
-            size=(dp(80), dp(28)),
-            font_size='11sp',
+            size=(_btn_w, _btn_h),
+            font_size=_fs3,
             rounded_button=True,
-            md_bg_color=COR_ACCENT if tem_obs else self._cor_pendente,
+            md_bg_color=COR_OBS if tem_obs else self._cor_pendente,
             on_release=lambda x: self.tela._editar_obs(self.ex, self),
         )
         linha3.add_widget(self._btn_obs)
@@ -123,8 +144,8 @@ class CardExercicio(MDCard):
         self._btn_feito = MDRaisedButton(
             text='✓ Feito' if self._feito else 'Feito',
             size_hint=(None, None),
-            size=(dp(80), dp(28)),
-            font_size='11sp',
+            size=(_btn_w, _btn_h),
+            font_size=_fs3,
             rounded_button=True,
             md_bg_color=COR_CONCLUIDO if self._feito else self._cor_pendente,
         )
@@ -167,11 +188,14 @@ class TelaTreino(MDScreen):
         root.add_widget(self.toolbar)
 
         # ── lista de exercícios ───────────────────────────────────────────────
+        _esp_cards  = Window.height * 0.030   # espaço entre cards
+        _pad_lista  = Window.width  * 0.030   # padding lateral da lista
+
         scroll = ScrollView()
         self.lista = MDBoxLayout(
             orientation='vertical',
-            spacing=dp(8),
-            padding=dp(12),
+            spacing=_esp_cards,
+            padding=_pad_lista,
             size_hint_y=None,
         )
         self.lista.bind(minimum_height=self.lista.setter('height'))
@@ -311,8 +335,8 @@ class TelaTreino(MDScreen):
         app = MDApp.get_running_app()
         app.salvar()
         tem_obs = bool(ex['obs'])
-        card._btn_obs.text = '✎ Obs' if tem_obs else 'Obs'
-        card._btn_obs.md_bg_color = COR_ACCENT if tem_obs else card._cor_pendente
+        card._btn_obs.text = 'Observação Registrada' if tem_obs else 'Adicionar Observação'
+        card._btn_obs.md_bg_color = COR_OBS if tem_obs else card._cor_pendente
         dlg.dismiss()
         if tem_obs and app.cliente:
             import firebase_sync

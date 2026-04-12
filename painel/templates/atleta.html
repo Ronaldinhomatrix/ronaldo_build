@@ -9,6 +9,12 @@
     <span class="badge badge-trainer">Aguardando sync no app</span>
   {% endif %}
   <a href="/cliente/{{ cliente.id }}/historico" class="btn btn-sm btn-outline-info ms-auto me-2">📊 Histórico</a>
+  <a href="/cliente/{{ cliente.id }}/exportar/completo"
+     class="btn btn-sm btn-outline-secondary me-2"
+     title="Exporta todos os treinos, atividade, histórico e observações do cliente">⬇ Dados completos</a>
+  <a href="/cliente/{{ cliente.id }}/exportar/progresso"
+     class="btn btn-sm btn-outline-secondary me-2"
+     title="Exporta sessões e evolução de carga por exercício">⬇ Progresso</a>
   <form method="post" action="/cliente/{{ cliente.id }}/excluir" class="me-2"
         onsubmit="return confirm('Excluir {{ cliente.nome }}? Esta ação não pode ser desfeita.')">
     <button class="btn btn-sm btn-outline-danger">🗑 Excluir cliente</button>
@@ -104,8 +110,9 @@
       <thead><tr class="text-light">
         <th style="width:36px"></th>
         <th>Exercício</th>
-        <th style="width:130px">Séries e Rep</th>
-        <th style="width:130px">Carga</th>
+        <th style="width:100px">Séries</th>
+        <th style="width:100px">Repetições</th>
+        <th style="width:110px">Carga</th>
         <th>Obs. cliente</th>
         <th style="width:90px"></th>
       </tr></thead>
@@ -136,7 +143,11 @@
             <input type="hidden" name="ex_id"  value="{{ ex.id }}">
             <td>
               <input class="form-control form-control-sm bg-dark text-light border-secondary"
-                     name="series" value="{{ ex.series }}" placeholder="ex: 3x12" required>
+                     name="series" value="{{ ex.series }}" placeholder="ex: 3" required>
+            </td>
+            <td>
+              <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                     name="repeticoes" value="{{ ex.get('repeticoes', '') }}" placeholder="ex: 12">
             </td>
             <td>
               <input class="form-control form-control-sm bg-dark text-light border-secondary"
@@ -195,9 +206,14 @@
         </div>
 
         <div>
-          <label class="form-label small text-secondary mb-1">Séries e Rep</label>
+          <label class="form-label small text-secondary mb-1">Séries</label>
           <input class="form-control form-control-sm bg-dark text-light border-secondary"
-                 name="series" placeholder="ex: 3x12" style="width:110px" required>
+                 name="series" placeholder="ex: 3" style="width:80px" required>
+        </div>
+        <div>
+          <label class="form-label small text-secondary mb-1">Repetições</label>
+          <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                 name="repeticoes" placeholder="ex: 12" style="width:90px">
         </div>
         <div>
           <label class="form-label small text-secondary mb-1">Carga</label>

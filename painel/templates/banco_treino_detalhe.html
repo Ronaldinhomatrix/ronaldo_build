@@ -26,8 +26,9 @@
       <tr class="text-light">
         <th style="width:36px"></th>
         <th>Exercício</th>
-        <th style="width:140px">Séries e Rep</th>
-        <th style="width:130px">Carga</th>
+        <th style="width:100px">Séries</th>
+        <th style="width:100px">Repetições</th>
+        <th style="width:110px">Carga</th>
         <th style="width:110px"></th>
       </tr>
     </thead>
@@ -53,7 +54,11 @@
           <input type="hidden" name="ex_id" value="{{ ex.id }}">
           <td>
             <input class="form-control form-control-sm bg-dark text-light border-secondary"
-                   name="series" value="{{ ex.series }}" placeholder="ex: 3x12" required>
+                   name="series" value="{{ ex.series }}" placeholder="ex: 3" required>
+          </td>
+          <td>
+            <input class="form-control form-control-sm bg-dark text-light border-secondary"
+                   name="repeticoes" value="{{ ex.get('repeticoes', '') }}" placeholder="ex: 12">
           </td>
           <td>
             <input class="form-control form-control-sm bg-dark text-light border-secondary"
@@ -103,9 +108,14 @@
         </select>
       </div>
       <div>
-        <label class="form-label small text-secondary mb-1">Séries e Rep</label>
+        <label class="form-label small text-secondary mb-1">Séries</label>
         <input class="form-control form-control-sm bg-dark text-light border-secondary"
-               name="series" placeholder="ex: 3x12" style="width:110px" required>
+               name="series" placeholder="ex: 3" style="width:80px" required>
+      </div>
+      <div>
+        <label class="form-label small text-secondary mb-1">Repetições</label>
+        <input class="form-control form-control-sm bg-dark text-light border-secondary"
+               name="repeticoes" placeholder="ex: 12" style="width:90px">
       </div>
       <div>
         <label class="form-label small text-secondary mb-1">Carga</label>
