@@ -3,8 +3,10 @@ Tela de cadastro inicial do cliente.
 Exibida apenas na primeira execução (quando cliente.json não existe).
 """
 import json
+import os
 import uuid
 
+from kivy.core.window import Window
 from kivy.metrics import dp
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -20,6 +22,12 @@ class TelaCadastro(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._build()
+
+    def on_enter(self):
+        Window.softinput_mode = 'below_target'
+
+    def on_leave(self):
+        Window.softinput_mode = ''
 
     def _build(self):
         root = MDBoxLayout(
