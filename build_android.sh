@@ -35,8 +35,8 @@ buildozer android debug
 echo "=== 5. Copiando APK de volta para Windows ==="
 APK=$(ls bin/*.apk 2>/dev/null | head -1)
 if [ -n "$APK" ]; then
-    cp "$APK" "$PROJETO_WIN/Instalador/RonaldoMedeirosFisiologista_v2.3.apk"
-    echo "APK copiado para: C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.3.apk"
+    cp "$APK" "$PROJETO_WIN/Instalador/RonaldoMedeirosFisiologista_v2.4.apk"
+    echo "APK copiado para: C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.4.apk"
 else
     echo "ERRO: APK não encontrado em bin/"
     exit 1
