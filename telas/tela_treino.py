@@ -93,28 +93,80 @@ class CardExercicio(MDCard):
             ))
         conteudo.add_widget(linha1)
 
-        # ── linha 2: séries e rep + peso ──────────────────────────────────────
-        _h2 = Window.height * 0.031   # altura linha 2 proporcional à tela
+        # ── linhas 2 e 3: séries/peso e repetições ───────────────────────────
+        _h2        = Window.height * 0.038   # altura de cada linha de info
+        _lbl_fixo  = Window.width  * 0.27    # largura fixa do label (alinha valores)
 
-        linha2 = MDBoxLayout(
-            orientation='horizontal',
-            size_hint_y=None,
-            height=_h2,
-            padding=[dp(10), 0, dp(12), 0],
-        )
         series     = self.ex.get('series', '')
         repeticoes = self.ex.get('repeticoes', '')
         peso       = self.ex.get('peso', '')
+
         if repeticoes:
-            info = f"Séries: {series}   •   Reps: {repeticoes}   •   Peso: {peso} kg"
+            # ── linha 2: Séries + Peso ────────────────────────────────────────
+            linha2 = MDBoxLayout(
+                orientation='horizontal',
+                size_hint_y=None,
+                height=_h2,
+                padding=[dp(10), 0, dp(12), 0],
+            )
+            linha2.add_widget(MDLabel(
+                text='Séries:',
+                font_size='16sp',
+                theme_text_color='Secondary',
+                size_hint_x=None,
+                width=_lbl_fixo,
+            ))
+            linha2.add_widget(MDLabel(
+                text=series,
+                font_size='16sp',
+                theme_text_color='Primary',
+                size_hint_x=None,
+                width=Window.width * 0.12,
+            ))
+            linha2.add_widget(MDLabel(
+                text=f'Peso: {peso} kg',
+                font_size='16sp',
+                theme_text_color='Secondary',
+                size_hint_x=1,
+            ))
+            conteudo.add_widget(linha2)
+
+            # ── linha 3: Repetições ───────────────────────────────────────────
+            linha3_rep = MDBoxLayout(
+                orientation='horizontal',
+                size_hint_y=None,
+                height=_h2,
+                padding=[dp(10), 0, dp(12), 0],
+            )
+            linha3_rep.add_widget(MDLabel(
+                text='Repetições:',
+                font_size='16sp',
+                theme_text_color='Secondary',
+                size_hint_x=None,
+                width=_lbl_fixo,
+            ))
+            linha3_rep.add_widget(MDLabel(
+                text=repeticoes,
+                font_size='16sp',
+                theme_text_color='Primary',
+                size_hint_x=1,
+            ))
+            conteudo.add_widget(linha3_rep)
+
         else:
-            info = f"Séries e Rep: {series}   •   Peso: {peso} kg"
-        linha2.add_widget(MDLabel(
-            text=info,
-            font_size='16sp',
-            theme_text_color='Secondary',
-        ))
-        conteudo.add_widget(linha2)
+            # fallback para exercícios antigos sem campo repeticoes
+            linha2 = MDBoxLayout(
+                orientation='horizontal',
+                size_hint_y=None,
+                height=_h2,
+                padding=[dp(10), 0, dp(12), 0],
+            )
+            linha2.add_widget(MDLabel(
+                text=f"Séries e Rep: {series}   •   Peso: {peso} kg",
+                font_size='16sp',
+                theme_text_color='Secondary',
+            ))
+            conteudo.add_widget(linha2)
 
         # ── linha 3: observação + feito ───────────────────────────────────────
         _fs3   = '13sp'   # linha 3: botões, menor que linhas 1 e 2
