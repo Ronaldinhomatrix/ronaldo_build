@@ -7,7 +7,7 @@ source.include_exts = py,ttf,png,jpg
 # Excluir fontes sensíveis do APK (compilados via Cython para .so)
 source.exclude_patterns = firebase_sync.py,firebase_config.py
 icon.filename = %(source.dir)s/icon_rm.png
-version = 2.4
+version = 2.5
 
 requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,ffpyplayer
 
