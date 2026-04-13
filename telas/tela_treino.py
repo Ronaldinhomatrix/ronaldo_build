@@ -2,6 +2,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.uix.image import AsyncImage
+from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.videoplayer import VideoPlayer
@@ -66,7 +67,7 @@ class CardExercicio(MDCard):
         conteudo.bind(height=self.setter('height'))
 
         # ── linha 1: nome + vídeo (header com fundo destacado) ───────────────
-        _h1 = Window.height * 0.090   # altura linha 1 proporcional à tela
+        _h1 = Window.height * 0.055   # altura linha 1 proporcional à tela
 
         _pad_h = Window.width  * 0.025   # padding horizontal padrão
         _pad_v = Window.height * 0.005   # padding vertical padrão
@@ -78,11 +79,16 @@ class CardExercicio(MDCard):
             padding=[_pad_h, _pad_v, _pad_v, _pad_v],
             md_bg_color=(0.357, 0.612, 0.965, 0.13),
         )
-        linha1.add_widget(MDLabel(
+        lbl_nome = Label(
             text=self.ex['nome'],
-            font_size='48sp',
+            font_size='20sp',
             size_hint_x=1,
-        ))
+            color=(1, 1, 1, 1),
+            halign='left',
+            valign='middle',
+        )
+        lbl_nome.bind(size=lbl_nome.setter('text_size'))
+        linha1.add_widget(lbl_nome)
         if tem_midia:
             tipo = self.ex.get('midia_tipo', 'gif')
             icon = 'play-circle-outline' if tipo == 'video' else 'image-outline'
@@ -124,10 +130,16 @@ class CardExercicio(MDCard):
                 size_hint_x=0.10,
             ))
             linha2.add_widget(MDLabel(
-                text=f'Peso: {peso} kg',
-                font_size='16sp',
+                text='Peso:',
+                font_size='11sp',
                 theme_text_color='Secondary',
-                size_hint_x=0.63,
+                size_hint_x=0.18,
+            ))
+            linha2.add_widget(MDLabel(
+                text=f'{peso} kg',
+                font_size='16sp',
+                theme_text_color='Primary',
+                size_hint_x=0.45,
             ))
             conteudo.add_widget(linha2)
 
@@ -142,13 +154,13 @@ class CardExercicio(MDCard):
                 text='Repetições:',
                 font_size='11sp',
                 theme_text_color='Secondary',
-                size_hint_x=0.27,
+                size_hint_x=0.38,
             ))
             linha3_rep.add_widget(MDLabel(
                 text=repeticoes,
                 font_size='16sp',
                 theme_text_color='Primary',
-                size_hint_x=0.73,
+                size_hint_x=0.62,
             ))
             conteudo.add_widget(linha3_rep)
 
@@ -191,7 +203,6 @@ class CardExercicio(MDCard):
             on_release=lambda x: self.tela._editar_obs(self.ex, self),
         )
         linha3.add_widget(self._btn_obs)
-        linha3.add_widget(MDBoxLayout(size_hint_x=1))  # espaçador
         self._btn_feito = MDRaisedButton(
             text='✓ Feito' if self._feito else 'Feito',
             size_hint=(None, None),
