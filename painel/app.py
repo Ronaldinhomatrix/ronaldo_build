@@ -61,6 +61,29 @@ def _col_banco():
     return db.collection('exercicios')
 
 
+_CATEGORIAS_PADRAO = [
+    'Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps',
+    'Pernas', 'Glúteos', 'Abdômen', 'Cardio', 'Outros',
+]
+
+
+def _carregar_categorias():
+    """Retorna lista de categorias (padrão + customizadas), sem duplicatas, ordenada."""
+    snap = db.collection('config').document('categorias').get()
+    customizadas = snap.to_dict().get('lista', []) if snap.exists else []
+    todas = list(dict.fromkeys(_CATEGORIAS_PADRAO + [c for c in customizadas if c not in _CATEGORIAS_PADRAO]))
+    return todas
+
+
+def _adicionar_categoria(nome):
+    """Adiciona uma categoria customizada ao Firestore (sem duplicar)."""
+    snap = db.collection('config').document('categorias').get()
+    atual = snap.to_dict().get('lista', []) if snap.exists else []
+    if nome not in _CATEGORIAS_PADRAO and nome not in atual:
+        atual.append(nome)
+        db.collection('config').document('categorias').set({'lista': atual})
+
+
 def _carregar_banco():
     return [{'id': d.id, **d.to_dict()} for d in _col_banco().order_by('nome').stream()]
 
@@ -251,8 +274,22 @@ def index():
 @app.route('/exercicios')
 @login_required
 def banco_exercicios():
+    filtro_cat = request.args.get('categoria', '')
     exercicios = _carregar_banco()
-    return render_template('exercicios.html', exercicios=exercicios)
+    if filtro_cat:
+        exercicios = [e for e in exercicios if e.get('categoria', '') == filtro_cat]
+    categorias = _carregar_categorias()
+    return render_template('exercicios.html', exercicios=exercicios,
+                           categorias=categorias, filtro_cat=filtro_cat)
+
+
+@app.route('/exercicios/categoria/nova', methods=['POST'])
+@login_required
+def banco_nova_categoria():
+    nome = request.form.get('nome', '').strip()
+    if nome:
+        _adicionar_categoria(nome)
+    return redirect(url_for('banco_exercicios'))
 
 
 @app.route('/exercicios/novo', methods=['POST'])
@@ -261,8 +298,10 @@ def banco_novo_exercicio():
     nome       = request.form['nome'].strip()
     midia_url  = request.form.get('midia_url', '').strip()
     midia_tipo = request.form.get('midia_tipo', 'gif').strip()
+    categoria  = request.form.get('categoria', '').strip()
     if nome:
-        _col_banco().add({'nome': nome, 'midia_url': midia_url, 'midia_tipo': midia_tipo})
+        _col_banco().add({'nome': nome, 'midia_url': midia_url,
+                          'midia_tipo': midia_tipo, 'categoria': categoria})
     return redirect(url_for('banco_exercicios'))
 
 
@@ -272,9 +311,11 @@ def banco_editar_exercicio(ex_id):
     nome       = request.form['nome'].strip()
     midia_url  = request.form.get('midia_url', '').strip()
     midia_tipo = request.form.get('midia_tipo', 'gif').strip()
+    categoria  = request.form.get('categoria', '').strip()
     if nome:
         _col_banco().document(ex_id).update(
-            {'nome': nome, 'midia_url': midia_url, 'midia_tipo': midia_tipo}
+            {'nome': nome, 'midia_url': midia_url,
+             'midia_tipo': midia_tipo, 'categoria': categoria}
         )
     return redirect(url_for('banco_exercicios'))
 

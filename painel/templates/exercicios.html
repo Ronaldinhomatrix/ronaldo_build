@@ -85,6 +85,15 @@
         <input class="form-control bg-dark text-light border-secondary"
                name="nome" placeholder="Ex: Supino Reto com Barra" required>
       </div>
+      <div style="width:160px">
+        <label class="form-label small text-muted mb-1">Categoria</label>
+        <select class="form-select bg-dark text-light border-secondary" name="categoria">
+          <option value="">— Sem categoria —</option>
+          {% for cat in categorias %}
+          <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="flex-grow-1" style="min-width:220px">
         <label class="form-label small text-muted mb-1">URL da mídia (foto, gif ou vídeo)</label>
         <input class="form-control bg-dark text-light border-secondary"
@@ -105,6 +114,40 @@
   </div>
 </div>
 
+{# ── Filtros por categoria ────────────────────────────────────────────────── #}
+<div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+  <span class="text-muted small me-1">Filtrar:</span>
+  <a href="/exercicios"
+     class="btn btn-sm {{ 'btn-primary' if not filtro_cat else 'btn-outline-secondary' }}">
+    Todos
+  </a>
+  {% for cat in categorias %}
+  <a href="/exercicios?categoria={{ cat | urlencode }}"
+     class="btn btn-sm {{ 'btn-primary' if filtro_cat == cat else 'btn-outline-secondary' }}">
+    {{ cat }}
+  </a>
+  {% endfor %}
+
+  {# Botão para adicionar nova categoria #}
+  <button class="btn btn-sm btn-outline-success ms-2" type="button"
+          data-bs-toggle="collapse" data-bs-target="#novaCategoria">
+    + Nova categoria
+  </button>
+  <div class="collapse w-100 mt-2" id="novaCategoria">
+    <form method="post" action="/exercicios/categoria/nova"
+          class="d-flex gap-2 align-items-end" style="max-width:400px">
+      <div class="flex-grow-1">
+        <label class="form-label small text-muted mb-1">Nome da nova categoria</label>
+        <input class="form-control form-control-sm bg-dark text-light border-secondary"
+               name="nome" placeholder="Ex: Mobilidade" required>
+      </div>
+      <div class="align-self-end">
+        <button class="btn btn-sm btn-success">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {# ── Lista ────────────────────────────────────────────────────────────────── #}
 {% if exercicios %}
 <div class="card">
@@ -113,6 +156,7 @@
       <tr>
         <th style="width:36px"></th>
         <th>Nome</th>
+        <th style="width:160px">Categoria</th>
         <th>URL da mídia</th>
         <th style="width:110px">Tipo</th>
         <th style="width:110px"></th>
@@ -136,11 +180,20 @@
           {% endif %}
         </td>
 
-        {# edit form (spans td nome, url, tipo) #}
+        {# edit form (spans td nome, categoria, url, tipo) #}
         <form method="post" action="/exercicios/{{ ex.id }}/editar" style="display:contents">
           <td>
             <input class="form-control form-control-sm bg-dark text-light border-secondary"
                    name="nome" value="{{ ex.nome }}" required>
+          </td>
+          <td>
+            <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                    name="categoria">
+              <option value="" {% if not ex.get('categoria') %}selected{% endif %}>— Sem categoria —</option>
+              {% for cat in categorias %}
+              <option value="{{ cat }}" {% if ex.get('categoria') == cat %}selected{% endif %}>{{ cat }}</option>
+              {% endfor %}
+            </select>
           </td>
           <td>
             <input class="form-control form-control-sm bg-dark text-light border-secondary"
@@ -168,7 +221,14 @@
   </table>
 </div>
 {% else %}
-<p class="text-muted">Nenhum exercício cadastrado ainda.</p>
+<p class="text-muted">
+  {% if filtro_cat %}
+    Nenhum exercício na categoria <strong>{{ filtro_cat }}</strong>.
+    <a href="/exercicios">Ver todos</a>
+  {% else %}
+    Nenhum exercício cadastrado ainda.
+  {% endif %}
+</p>
 {% endif %}
 
 {% endblock %}
