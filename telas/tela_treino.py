@@ -128,25 +128,21 @@ class CardExercicio(MDCard):
                 text='Séries:',
                 font_size='11sp',
                 theme_text_color='Secondary',
-                size_hint_x=0.27,
+                halign='center',
+                size_hint_x=0.38,
             ))
             linha2.add_widget(MDLabel(
                 text=series,
                 font_size='16sp',
                 theme_text_color='Primary',
-                size_hint_x=0.10,
+                size_hint_x=0.09,
             ))
             linha2.add_widget(MDLabel(
-                text='Peso:',
-                font_size='11sp',
-                theme_text_color='Secondary',
-                size_hint_x=0.18,
-            ))
-            linha2.add_widget(MDLabel(
-                text=f'{peso} kg',
+                text=f'Peso:  {peso} kg',
                 font_size='16sp',
                 theme_text_color='Primary',
-                size_hint_x=0.45,
+                halign='right',
+                size_hint_x=0.53,
             ))
             conteudo.add_widget(linha2)
             conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
@@ -162,6 +158,7 @@ class CardExercicio(MDCard):
                 text='Repetições:',
                 font_size='11sp',
                 theme_text_color='Secondary',
+                halign='center',
                 size_hint_x=0.38,
             ))
             linha3_rep.add_widget(MDLabel(
@@ -199,7 +196,7 @@ class CardExercicio(MDCard):
             orientation='horizontal',
             size_hint_y=None,
             height=_h3,
-            spacing=Window.width * 0.040,
+            spacing=0,
             padding=[_pad_v, 0, _pad_h, 0],
         )
         tem_obs = bool(self.ex.get('obs', '').strip())
@@ -213,6 +210,7 @@ class CardExercicio(MDCard):
             on_release=lambda x: self.tela._editar_obs(self.ex, self),
         )
         linha3.add_widget(self._btn_obs)
+        linha3.add_widget(MDBoxLayout(size_hint_x=1))
         self._btn_feito = MDRaisedButton(
             text='✓ Feito' if self._feito else 'Feito',
             size_hint=(None, None),
