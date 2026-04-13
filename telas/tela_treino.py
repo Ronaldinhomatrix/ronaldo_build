@@ -54,14 +54,15 @@ class CardExercicio(MDCard):
         self.add_widget(borda)
 
         # ── conteúdo vertical (altura calculada pelos filhos) ─────────────────
-        _esp_linhas = Window.height * 0.008   # espaço entre linhas do card
+        _esp_linhas = Window.height * 0.008   # espaço entre linhas de info
+        _esp_botoes = Window.height * 0.003   # espaço menor antes dos botões
         _pad_inf    = Window.height * 0.012   # padding inferior do card
 
         conteudo = MDBoxLayout(
             orientation='vertical',
             size_hint=(1, None),
             padding=[0, 0, 0, _pad_inf],
-            spacing=_esp_linhas,
+            spacing=0,
         )
         conteudo.bind(minimum_height=conteudo.setter('height'))
         conteudo.bind(height=self.setter('height'))
@@ -101,6 +102,7 @@ class CardExercicio(MDCard):
                 on_release=lambda x: self.tela._ver_midia(self.ex),
             ))
         conteudo.add_widget(linha1)
+        conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
 
         # ── linhas 2 e 3: séries/peso e repetições ───────────────────────────
         _h2        = Window.height * 0.038   # altura de cada linha de info
@@ -142,6 +144,7 @@ class CardExercicio(MDCard):
                 size_hint_x=0.45,
             ))
             conteudo.add_widget(linha2)
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
 
             # ── linha 3: Repetições ───────────────────────────────────────────
             linha3_rep = MDBoxLayout(
@@ -163,6 +166,7 @@ class CardExercicio(MDCard):
                 size_hint_x=0.62,
             ))
             conteudo.add_widget(linha3_rep)
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_botoes))
 
         else:
             # fallback para exercícios antigos sem campo repeticoes
@@ -178,6 +182,7 @@ class CardExercicio(MDCard):
                 theme_text_color='Secondary',
             ))
             conteudo.add_widget(linha2)
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_botoes))
 
         # ── linha 3: observação + feito ───────────────────────────────────────
         _fs3   = '13sp'   # linha 3: botões, menor que linhas 1 e 2
@@ -189,7 +194,7 @@ class CardExercicio(MDCard):
             orientation='horizontal',
             size_hint_y=None,
             height=_h3,
-            spacing=Window.width * 0.020,
+            spacing=Window.width * 0.040,
             padding=[_pad_v, 0, _pad_h, 0],
         )
         tem_obs = bool(self.ex.get('obs', '').strip())
