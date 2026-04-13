@@ -47,7 +47,7 @@ class CardExercicio(MDCard):
         # ── borda lateral azul ────────────────────────────────────────────────
         borda = MDBoxLayout(
             size_hint=(None, 1),
-            width=dp(4),
+            width=Window.width * 0.010,
             md_bg_color=COR_ACCENT,
         )
         self.add_widget(borda)
@@ -66,18 +66,21 @@ class CardExercicio(MDCard):
         conteudo.bind(height=self.setter('height'))
 
         # ── linha 1: nome + vídeo (header com fundo destacado) ───────────────
-        _h1 = Window.height * 0.073   # altura linha 1 proporcional à tela
+        _h1 = Window.height * 0.090   # altura linha 1 proporcional à tela
+
+        _pad_h = Window.width  * 0.025   # padding horizontal padrão
+        _pad_v = Window.height * 0.005   # padding vertical padrão
 
         linha1 = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
             height=_h1,
-            padding=[dp(10), dp(4), dp(4), dp(4)],
+            padding=[_pad_h, _pad_v, _pad_v, _pad_v],
             md_bg_color=(0.357, 0.612, 0.965, 0.13),
         )
         linha1.add_widget(MDLabel(
             text=self.ex['nome'],
-            font_size='26sp',
+            font_size='48sp',
             size_hint_x=1,
         ))
         if tem_midia:
@@ -95,7 +98,6 @@ class CardExercicio(MDCard):
 
         # ── linhas 2 e 3: séries/peso e repetições ───────────────────────────
         _h2        = Window.height * 0.038   # altura de cada linha de info
-        _lbl_fixo  = Window.width  * 0.27    # largura fixa do label (alinha valores)
 
         series     = self.ex.get('series', '')
         repeticoes = self.ex.get('repeticoes', '')
@@ -107,27 +109,25 @@ class CardExercicio(MDCard):
                 orientation='horizontal',
                 size_hint_y=None,
                 height=_h2,
-                padding=[dp(10), 0, dp(12), 0],
+                padding=[_pad_h, 0, _pad_h * 1.2, 0],
             )
             linha2.add_widget(MDLabel(
                 text='Séries:',
-                font_size='16sp',
+                font_size='11sp',
                 theme_text_color='Secondary',
-                size_hint_x=None,
-                width=_lbl_fixo,
+                size_hint_x=0.27,
             ))
             linha2.add_widget(MDLabel(
                 text=series,
                 font_size='16sp',
                 theme_text_color='Primary',
-                size_hint_x=None,
-                width=Window.width * 0.12,
+                size_hint_x=0.10,
             ))
             linha2.add_widget(MDLabel(
                 text=f'Peso: {peso} kg',
                 font_size='16sp',
                 theme_text_color='Secondary',
-                size_hint_x=1,
+                size_hint_x=0.63,
             ))
             conteudo.add_widget(linha2)
 
@@ -136,20 +136,19 @@ class CardExercicio(MDCard):
                 orientation='horizontal',
                 size_hint_y=None,
                 height=_h2,
-                padding=[dp(10), 0, dp(12), 0],
+                padding=[_pad_h, 0, _pad_h * 1.2, 0],
             )
             linha3_rep.add_widget(MDLabel(
                 text='Repetições:',
-                font_size='16sp',
+                font_size='11sp',
                 theme_text_color='Secondary',
-                size_hint_x=None,
-                width=_lbl_fixo,
+                size_hint_x=0.27,
             ))
             linha3_rep.add_widget(MDLabel(
                 text=repeticoes,
                 font_size='16sp',
                 theme_text_color='Primary',
-                size_hint_x=1,
+                size_hint_x=0.73,
             ))
             conteudo.add_widget(linha3_rep)
 
@@ -159,7 +158,7 @@ class CardExercicio(MDCard):
                 orientation='horizontal',
                 size_hint_y=None,
                 height=_h2,
-                padding=[dp(10), 0, dp(12), 0],
+                padding=[_pad_h, 0, _pad_h * 1.2, 0],
             )
             linha2.add_widget(MDLabel(
                 text=f"Séries e Rep: {series}   •   Peso: {peso} kg",
@@ -178,8 +177,8 @@ class CardExercicio(MDCard):
             orientation='horizontal',
             size_hint_y=None,
             height=_h3,
-            spacing=dp(8),
-            padding=[dp(4), 0, dp(8), 0],
+            spacing=Window.width * 0.020,
+            padding=[_pad_v, 0, _pad_h, 0],
         )
         tem_obs = bool(self.ex.get('obs', '').strip())
         self._btn_obs = MDRaisedButton(
