@@ -327,7 +327,9 @@ def ver_cliente(cliente_id):
         return 'Cliente não encontrado.', 404
     banco          = _carregar_banco()
     banco_treinos_ = _carregar_banco_treinos()
-    return render_template('atleta.html', cliente=cliente, banco=banco, banco_treinos=banco_treinos_)
+    categorias     = _carregar_categorias()
+    return render_template('atleta.html', cliente=cliente, banco=banco,
+                           banco_treinos=banco_treinos_, categorias=categorias)
 
 
 @app.route('/cliente/<cliente_id>/exercicio/add', methods=['POST'])
@@ -703,8 +705,10 @@ def banco_treino_detalhe(template_id):
     template = _carregar_template(template_id)
     if template is None:
         return 'Template não encontrado.', 404
-    banco = _carregar_banco()
-    return render_template('banco_treino_detalhe.html', template=template, banco=banco)
+    banco      = _carregar_banco()
+    categorias = _carregar_categorias()
+    return render_template('banco_treino_detalhe.html', template=template,
+                           banco=banco, categorias=categorias)
 
 
 @app.route('/banco-treinos/<template_id>/renomear', methods=['POST'])

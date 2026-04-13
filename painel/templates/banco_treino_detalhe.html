@@ -78,13 +78,26 @@
           onsubmit="return validarPicker()">
       <input type="hidden" name="nome" id="nome-ex">
 
+      <div style="min-width:160px">
+        <label class="form-label small text-secondary mb-1">Categoria</label>
+        <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                id="cat-ex" onchange="filtrarExercicios()">
+          <option value="">— Todas —</option>
+          {% for cat in categorias %}
+          <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
       <div style="min-width:220px">
         <label class="form-label small text-secondary mb-1">Exercício</label>
         <select class="form-select form-select-sm bg-dark text-light border-secondary"
                 id="sel-ex" onchange="selecionarEx()">
           <option value="">— Escolher do banco —</option>
           {% for ex in banco %}
-          <option value="{{ ex.id }}" data-nome="{{ ex.nome }}">{{ ex.nome }}</option>
+          <option value="{{ ex.id }}"
+                  data-nome="{{ ex.nome }}"
+                  data-categoria="{{ ex.get('categoria', '') }}">{{ ex.nome }}</option>
           {% endfor %}
         </select>
       </div>
@@ -111,11 +124,23 @@
 </div>
 
 <script>
+function filtrarExercicios() {
+  const cat = document.getElementById('cat-ex').value;
+  const sel = document.getElementById('sel-ex');
+  sel.value = '';
+  document.getElementById('nome-ex').value = '';
+  Array.from(sel.options).forEach(opt => {
+    if (!opt.value) return;
+    opt.hidden = cat ? opt.dataset.categoria !== cat : false;
+  });
+}
+
 function selecionarEx() {
   const sel = document.getElementById('sel-ex');
   const opt = sel.options[sel.selectedIndex];
   document.getElementById('nome-ex').value = opt.dataset.nome || '';
 }
+
 function validarPicker() {
   if (!document.getElementById('nome-ex').value) {
     alert('Escolha um exercício do banco antes de adicionar.');

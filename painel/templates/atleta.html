@@ -172,6 +172,18 @@
         <input type="hidden" name="nome"        id="nome-{{ letra }}">
         <input type="hidden" name="ex_banco_id" id="ex_banco_id-{{ letra }}">
 
+        <div style="min-width:160px">
+          <label class="form-label small text-secondary mb-1" style="white-space:nowrap">Categoria</label>
+          <select class="form-select form-select-sm bg-dark text-light border-secondary"
+                  id="cat-{{ letra }}"
+                  onchange="filtrarExercicios('{{ letra }}')">
+            <option value="">— Todas —</option>
+            {% for cat in categorias %}
+            <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <div style="min-width:220px">
           <label class="form-label small text-secondary mb-1" style="white-space:nowrap">Exercício</label>
           <select class="form-select form-select-sm bg-dark text-light border-secondary"
@@ -180,7 +192,8 @@
             <option value="">— Escolher do banco —</option>
             {% for ex in banco %}
             <option value="{{ ex.id }}"
-                    data-nome="{{ ex.nome }}">{{ ex.nome }}</option>
+                    data-nome="{{ ex.nome }}"
+                    data-categoria="{{ ex.get('categoria', '') }}">{{ ex.nome }}</option>
             {% endfor %}
           </select>
         </div>
@@ -299,6 +312,20 @@
 {% endif %}
 
 <script>
+function filtrarExercicios(letra) {
+  const cat = document.getElementById('cat-' + letra).value;
+  const sel = document.getElementById('sel-' + letra);
+  // limpa seleção atual
+  sel.value = '';
+  document.getElementById('nome-'        + letra).value = '';
+  document.getElementById('ex_banco_id-' + letra).value = '';
+  // mostra/oculta opções conforme categoria
+  Array.from(sel.options).forEach(opt => {
+    if (!opt.value) return; // mantém placeholder
+    opt.hidden = cat ? opt.dataset.categoria !== cat : false;
+  });
+}
+
 function selecionarEx(letra) {
   const sel = document.getElementById('sel-' + letra);
   const opt = sel.options[sel.selectedIndex];
