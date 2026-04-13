@@ -295,28 +295,20 @@ def banco_nova_categoria():
 @app.route('/exercicios/novo', methods=['POST'])
 @login_required
 def banco_novo_exercicio():
-    nome       = request.form['nome'].strip()
-    midia_url  = request.form.get('midia_url', '').strip()
-    midia_tipo = request.form.get('midia_tipo', 'gif').strip()
-    categoria  = request.form.get('categoria', '').strip()
+    nome      = request.form['nome'].strip()
+    categoria = request.form.get('categoria', '').strip()
     if nome:
-        _col_banco().add({'nome': nome, 'midia_url': midia_url,
-                          'midia_tipo': midia_tipo, 'categoria': categoria})
+        _col_banco().add({'nome': nome, 'categoria': categoria})
     return redirect(url_for('banco_exercicios'))
 
 
 @app.route('/exercicios/<ex_id>/editar', methods=['POST'])
 @login_required
 def banco_editar_exercicio(ex_id):
-    nome       = request.form['nome'].strip()
-    midia_url  = request.form.get('midia_url', '').strip()
-    midia_tipo = request.form.get('midia_tipo', 'gif').strip()
-    categoria  = request.form.get('categoria', '').strip()
+    nome      = request.form['nome'].strip()
+    categoria = request.form.get('categoria', '').strip()
     if nome:
-        _col_banco().document(ex_id).update(
-            {'nome': nome, 'midia_url': midia_url,
-             'midia_tipo': midia_tipo, 'categoria': categoria}
-        )
+        _col_banco().document(ex_id).update({'nome': nome, 'categoria': categoria})
     return redirect(url_for('banco_exercicios'))
 
 
@@ -346,8 +338,6 @@ def add_exercicio(cliente_id):
     series      = request.form.get('series', '').strip()
     repeticoes  = request.form.get('repeticoes', '').strip()
     peso        = request.form.get('peso', '').strip()
-    midia_url   = request.form.get('midia_url', '').strip()
-    midia_tipo  = request.form.get('midia_tipo', '').strip()
     ex_banco_id = request.form.get('ex_banco_id', '').strip()
 
     if not nome:
@@ -359,9 +349,6 @@ def add_exercicio(cliente_id):
 
     ex = {'id': str(uuid.uuid4()), 'nome': nome, 'series': series,
           'repeticoes': repeticoes, 'peso': peso}
-    if midia_url:
-        ex['midia_url']  = midia_url
-        ex['midia_tipo'] = midia_tipo
     if ex_banco_id:
         ex['ex_banco_id'] = ex_banco_id
 
@@ -746,14 +733,9 @@ def banco_treino_add_ex(template_id):
     series     = request.form.get('series', '').strip()
     repeticoes = request.form.get('repeticoes', '').strip()
     peso       = request.form.get('peso', '').strip()
-    midia_url  = request.form.get('midia_url', '').strip()
-    midia_tipo = request.form.get('midia_tipo', '').strip()
     if nome:
         ex = {'id': str(uuid.uuid4()), 'nome': nome, 'series': series,
               'repeticoes': repeticoes, 'peso': peso}
-        if midia_url:
-            ex['midia_url']  = midia_url
-            ex['midia_tipo'] = midia_tipo
         template['exercicios'].append(ex)
         _col_banco_treinos().document(template_id).update(
             {'exercicios': json.dumps(template['exercicios'], ensure_ascii=False)}

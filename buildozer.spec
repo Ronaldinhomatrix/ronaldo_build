@@ -3,7 +3,7 @@ title = Ronaldo Medeiros Fisiologista
 package.name = ronaldomedeirosfisiologista
 package.domain = com.operantlab
 source.dir = .
-source.include_exts = py,ttf,png,jpg
+source.include_exts = py,ttf,png,jpg,mp4
 # Excluir fontes sensíveis do APK (compilados via Cython para .so)
 source.exclude_patterns = firebase_sync.py,firebase_config.py
 icon.filename = %(source.dir)s/icon_rm.png

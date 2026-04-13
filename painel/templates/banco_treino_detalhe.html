@@ -24,7 +24,6 @@
   <table class="table table-dark table-hover mb-0 align-middle">
     <thead>
       <tr class="text-light">
-        <th style="width:36px"></th>
         <th>Exercício</th>
         <th style="width:100px">Séries</th>
         <th style="width:100px">Repetições</th>
@@ -35,19 +34,6 @@
     <tbody>
       {% for ex in template.exercicios %}
       <tr>
-        <td>
-          {% if ex.midia_url %}
-            {% if ex.midia_tipo == 'video' %}
-              <a href="{{ ex.midia_url }}" target="_blank" class="text-primary fs-5">▶</a>
-            {% else %}
-              <a href="{{ ex.midia_url }}" target="_blank">
-                <img src="{{ ex.midia_url }}"
-                     style="width:36px;height:36px;object-fit:cover;border-radius:4px"
-                     onerror="this.style.display='none'">
-              </a>
-            {% endif %}
-          {% endif %}
-        </td>
         <td class="fw-semibold text-light">{{ ex.nome }}</td>
         <form method="post" action="/banco-treinos/{{ template.id }}/exercicio/edit"
               style="display:contents">
@@ -90,9 +76,7 @@
     <form method="post" action="/banco-treinos/{{ template.id }}/exercicio/add"
           class="d-flex gap-2 flex-wrap align-items-end"
           onsubmit="return validarPicker()">
-      <input type="hidden" name="nome"       id="nome-ex">
-      <input type="hidden" name="midia_url"  id="midia_url-ex">
-      <input type="hidden" name="midia_tipo" id="midia_tipo-ex">
+      <input type="hidden" name="nome" id="nome-ex">
 
       <div style="min-width:220px">
         <label class="form-label small text-secondary mb-1">Exercício</label>
@@ -100,10 +84,7 @@
                 id="sel-ex" onchange="selecionarEx()">
           <option value="">— Escolher do banco —</option>
           {% for ex in banco %}
-          <option value="{{ ex.id }}"
-                  data-nome="{{ ex.nome }}"
-                  data-url="{{ ex.midia_url or '' }}"
-                  data-tipo="{{ ex.midia_tipo or '' }}">{{ ex.nome }}</option>
+          <option value="{{ ex.id }}" data-nome="{{ ex.nome }}">{{ ex.nome }}</option>
           {% endfor %}
         </select>
       </div>
@@ -133,9 +114,7 @@
 function selecionarEx() {
   const sel = document.getElementById('sel-ex');
   const opt = sel.options[sel.selectedIndex];
-  document.getElementById('nome-ex').value      = opt.dataset.nome || '';
-  document.getElementById('midia_url-ex').value  = opt.dataset.url  || '';
-  document.getElementById('midia_tipo-ex').value = opt.dataset.tipo || '';
+  document.getElementById('nome-ex').value = opt.dataset.nome || '';
 }
 function validarPicker() {
   if (!document.getElementById('nome-ex').value) {

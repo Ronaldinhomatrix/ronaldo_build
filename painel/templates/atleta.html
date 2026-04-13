@@ -108,7 +108,6 @@
     {% if exercicios %}
     <table class="table table-dark table-hover mb-0 align-middle">
       <thead><tr class="text-light">
-        <th style="width:36px"></th>
         <th>Exercício</th>
         <th style="width:100px">Séries</th>
         <th style="width:100px">Repetições</th>
@@ -119,21 +118,6 @@
       <tbody>
         {% for ex in exercicios %}
         <tr>
-          {# miniatura da mídia #}
-          <td>
-            {% if ex.midia_url %}
-              {% if ex.midia_tipo == 'video' %}
-                <a href="{{ ex.midia_url }}" target="_blank" title="Ver vídeo"
-                   class="text-primary fs-5">▶</a>
-              {% else %}
-                <a href="{{ ex.midia_url }}" target="_blank">
-                  <img src="{{ ex.midia_url }}"
-                       style="width:36px;height:36px;object-fit:cover;border-radius:4px"
-                       onerror="this.style.display='none'">
-                </a>
-              {% endif %}
-            {% endif %}
-          </td>
           <td class="fw-semibold text-light">{{ ex.nome }}</td>
 
           {# edição inline: só séries e carga #}
@@ -186,8 +170,6 @@
             onsubmit="return validarPicker('{{ letra }}')">
         <input type="hidden" name="treino"      value="{{ letra }}">
         <input type="hidden" name="nome"        id="nome-{{ letra }}">
-        <input type="hidden" name="midia_url"   id="midia_url-{{ letra }}">
-        <input type="hidden" name="midia_tipo"  id="midia_tipo-{{ letra }}">
         <input type="hidden" name="ex_banco_id" id="ex_banco_id-{{ letra }}">
 
         <div style="min-width:220px">
@@ -198,9 +180,7 @@
             <option value="">— Escolher do banco —</option>
             {% for ex in banco %}
             <option value="{{ ex.id }}"
-                    data-nome="{{ ex.nome }}"
-                    data-url="{{ ex.midia_url or '' }}"
-                    data-tipo="{{ ex.midia_tipo or '' }}">{{ ex.nome }}</option>
+                    data-nome="{{ ex.nome }}">{{ ex.nome }}</option>
             {% endfor %}
           </select>
         </div>
@@ -322,10 +302,8 @@
 function selecionarEx(letra) {
   const sel = document.getElementById('sel-' + letra);
   const opt = sel.options[sel.selectedIndex];
-  document.getElementById('nome-'        + letra).value = opt.dataset.nome  || '';
-  document.getElementById('midia_url-'   + letra).value = opt.dataset.url   || '';
-  document.getElementById('midia_tipo-'  + letra).value = opt.dataset.tipo  || '';
-  document.getElementById('ex_banco_id-' + letra).value = opt.value         || '';
+  document.getElementById('nome-'        + letra).value = opt.dataset.nome || '';
+  document.getElementById('ex_banco_id-' + letra).value = opt.value        || '';
 }
 
 function validarPicker(letra) {

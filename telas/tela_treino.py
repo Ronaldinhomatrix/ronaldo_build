@@ -1,7 +1,8 @@
+import os
+
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.metrics import dp
-from kivy.uix.image import AsyncImage
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
@@ -26,6 +27,12 @@ COR_OBS       = get_color_from_hex('#F9A825')
 class CardExercicio(MDCard):
     """Card de exercício com borda lateral colorida e altura dinâmica."""
 
+    @staticmethod
+    def _caminho_video(nome):
+        """Retorna o caminho local do vídeo derivado do nome do exercício."""
+        arquivo = nome.lower().replace(' ', '_') + '.mp4'
+        return os.path.join('assets', 'videos', arquivo)
+
     def __init__(self, ex, tela, **kwargs):
         super().__init__(
             orientation='horizontal',
@@ -40,10 +47,10 @@ class CardExercicio(MDCard):
         app = MDApp.get_running_app()
         self._feito = app.progresso_treino.get('feitos', {}).get(ex.get('id', ''), False)
         self._cor_pendente = tuple(self.md_bg_color)
+        self._tem_video = os.path.exists(self._caminho_video(ex.get('nome', '')))
         self._build()
 
     def _build(self):
-        tem_midia = bool(self.ex.get('midia_url', '').strip())
 
         # ── borda lateral azul ────────────────────────────────────────────────
         borda = MDBoxLayout(
@@ -90,11 +97,9 @@ class CardExercicio(MDCard):
         )
         lbl_nome.bind(size=lbl_nome.setter('text_size'))
         linha1.add_widget(lbl_nome)
-        if tem_midia:
-            tipo = self.ex.get('midia_tipo', 'gif')
-            icon = 'play-circle-outline' if tipo == 'video' else 'image-outline'
+        if self._tem_video:
             linha1.add_widget(MDIconButton(
-                icon=icon,
+                icon='play-circle-outline',
                 theme_text_color='Custom',
                 text_color=(0.6, 0.8, 1.0, 1),
                 size_hint_x=None,
@@ -412,42 +417,19 @@ class TelaTreino(MDScreen):
     # ── mídia ─────────────────────────────────────────────────────────────────
 
     def _ver_midia(self, ex):
-        url  = ex.get('midia_url', '')
-        tipo = ex.get('midia_tipo', 'gif')
-
-        if tipo == 'video':
-            player = VideoPlayer(
-                source=url,
-                state='play',
-                allow_stretch=True,
-            )
-            popup = Popup(
-                title=ex['nome'],
-                content=player,
-                size_hint=(1, 0.6),
-            )
-            popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
-            popup.open()
-            return
-
-        # foto ou gif — exibe em dialog
-        img = AsyncImage(
-            source=url,
-            size_hint_y=None,
-            height=dp(280),
+        caminho = CardExercicio._caminho_video(ex.get('nome', ''))
+        player = VideoPlayer(
+            source=caminho,
+            state='play',
             allow_stretch=True,
-            keep_ratio=True,
         )
-        caixa = MDBoxLayout(size_hint_y=None, height=dp(280))
-        caixa.add_widget(img)
-
-        dlg = MDDialog(
+        popup = Popup(
             title=ex['nome'],
-            type='custom',
-            content_cls=caixa,
-            buttons=[MDFlatButton(text='FECHAR', on_release=lambda x: dlg.dismiss())],
+            content=player,
+            size_hint=(1, 0.6),
         )
-        dlg.open()
+        popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
+        popup.open()
 
     # ── histórico de peso ─────────────────────────────────────────────────────
 
