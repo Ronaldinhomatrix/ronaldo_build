@@ -40,13 +40,17 @@ pip3 install --user --upgrade --break-system-packages buildozer "cython<3.0"
 export PATH="$HOME/.local/bin:$PATH"
 
 echo "=== 4. Gerando APK (debug) ==="
+# Remove APKs antigos para garantir que o script copie o correto
+rm -f "$PROJETO_WSL/bin/"*.apk
+# Força recópia dos arquivos fonte (preserva SDK/NDK/Python compilados)
+rm -rf "$PROJETO_WSL/.buildozer/android/app"
 buildozer android debug
 
 echo "=== 5. Copiando APK de volta para Windows ==="
-APK=$(ls bin/*.apk 2>/dev/null | head -1)
+APK=$(ls -t bin/*.apk 2>/dev/null | head -1)
 if [ -n "$APK" ]; then
-    cp "$APK" "$PROJETO_WIN/Instalador/RonaldoMedeirosFisiologista_v2.5.apk"
-    echo "APK copiado para: C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.5.apk"
+    cp "$APK" "$PROJETO_WIN/Instalador/RonaldoMedeirosFisiologista_v2.8.apk"
+    echo "APK copiado para: C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.8.apk"
 else
     echo "ERRO: APK não encontrado em bin/"
     exit 1

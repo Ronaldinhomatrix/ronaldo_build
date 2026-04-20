@@ -4,9 +4,10 @@ package.name = ronaldomedeirosfisiologista
 package.domain = com.operantlab
 source.dir = .
 source.include_exts = py,ttf,png,jpg
-# TEMP: ambos incluídos como .py para teste (Cython recipe será corrigido depois)
+source.exclude_dirs = p4a_recipes,painel,.git,bin
+# firebase_sync.py e firebase_config.py incluídos como .py (proteção via Firestore Rules)
 icon.filename = %(source.dir)s/icon_rm.png
-version = 2.5
+version = 2.8
 
 requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,ffpyplayer
 
@@ -18,7 +19,6 @@ android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 log_level = 2
 warn_on_root = 1
 cython = ~/.local/share/pipx/venvs/buildozer/bin/cython
-p4a.local_recipes = ./p4a_recipes
 
 [app:android]
 android.api = 33
