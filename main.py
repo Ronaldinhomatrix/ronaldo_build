@@ -61,8 +61,10 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         from telas.tela_historico import TelaHistorico
         from telas.tela_atividade import TelaAtividade
         from telas.tela_configuracoes import TelaConfiguracoes
+        from telas.tela_download import TelaDownload, videos_prontos
 
         self.sm = ScreenManager(transition=SlideTransition())
+        self.sm.add_widget(TelaDownload(name='download'))
         self.sm.add_widget(TelaCadastro(name='cadastro'))
         self.sm.add_widget(TelaHome(name='home'))
         self.sm.add_widget(TelaTreino(name='treino'))
@@ -70,8 +72,12 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         self.sm.add_widget(TelaAtividade(name='atividade'))
         self.sm.add_widget(TelaConfiguracoes(name='configuracoes'))
 
-        # Primeira tela: cadastro se ainda não registrado, senão home
-        self.sm.current = 'home' if self.cliente else 'cadastro'
+        if not videos_prontos():
+            self.sm.current = 'download'
+        elif self.cliente:
+            self.sm.current = 'home'
+        else:
+            self.sm.current = 'cadastro'
         return self.sm
 
     def on_start(self):

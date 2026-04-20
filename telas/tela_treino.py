@@ -1,4 +1,5 @@
 import os
+import unicodedata
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -6,7 +7,6 @@ from kivy.metrics import dp
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.videoplayer import VideoPlayer
 from kivy.utils import get_color_from_hex
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -29,8 +29,13 @@ class CardExercicio(MDCard):
 
     @staticmethod
     def _caminho_video(nome):
-        """Retorna o caminho local do vídeo derivado do nome do exercício."""
-        arquivo = nome.lower().replace(' ', '_') + '.mp4'
+        sem_acento = unicodedata.normalize('NFD', nome)
+        sem_acento = ''.join(c for c in sem_acento if unicodedata.category(c) != 'Mn')
+        arquivo = sem_acento.lower().replace(' ', '_') + '.mp4'
+        from telas.tela_download import pasta_videos
+        externo = os.path.join(pasta_videos(), arquivo)
+        if os.path.exists(externo):
+            return externo
         return os.path.join('assets', 'videos', arquivo)
 
     def __init__(self, ex, tela, **kwargs):
@@ -415,6 +420,7 @@ class TelaTreino(MDScreen):
     # ── mídia ─────────────────────────────────────────────────────────────────
 
     def _ver_midia(self, ex):
+        from kivy.uix.videoplayer import VideoPlayer
         caminho = CardExercicio._caminho_video(ex.get('nome', ''))
         player = VideoPlayer(
             source=caminho,
