@@ -16,12 +16,6 @@ fullscreen = 0
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 android.release_artifact = apk
 
-[buildozer]
-log_level = 2
-warn_on_root = 1
-cython = ~/.local/share/pipx/venvs/buildozer/bin/cython
-
-[app:android]
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
@@ -42,3 +36,8 @@ android.strip = True
 
 # Proteção: desativa logs em produção
 android.logcat_filters = *:S
+
+[buildozer]
+log_level = 2
+warn_on_root = 1
+cython = ~/.local/share/pipx/venvs/buildozer/bin/cython
