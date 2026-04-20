@@ -74,7 +74,15 @@ if [ -n "$APK" ]; then
     cp "$APK" "$PROJETO_WIN/Instalador/RonaldoMedeirosFisiologista_v2.8.apk"
     echo "APK copiado para: C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.8.apk"
 else
-    echo "ERRO: APK não encontrado em bin/"
+    # Fallback: verifica se gerou .aab (não serve para instalação direta)
+    AAB=$(ls -t bin/*.aab 2>/dev/null | head -1)
+    if [ -n "$AAB" ]; then
+        echo "AVISO: buildozer gerou .aab em vez de .apk."
+        echo "Para distribuição direta, é necessário .apk."
+        echo "Verifique se android.release_artifact = apk está na seção [app] do buildozer.spec"
+        exit 1
+    fi
+    echo "ERRO: nenhum APK ou AAB encontrado em bin/"
     exit 1
 fi
 

@@ -14,6 +14,7 @@ requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,ffpyplayer
 orientation = portrait
 fullscreen = 0
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.release_artifact = apk
 
 [buildozer]
 log_level = 2
@@ -26,7 +27,6 @@ android.minapi = 21
 android.ndk = 25b
 android.archs = arm64-v8a
 android.accept_sdk_license = True
-android.release_artifact = apk
 
 # Assinatura do APK release
 android.keystore = /mnt/c/Users/madm/keystore/ronaldo.jks
