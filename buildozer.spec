@@ -28,6 +28,12 @@ android.archs = arm64-v8a
 android.accept_sdk_license = True
 android.release_artifact = apk
 
+# Assinatura do APK release
+android.keystore = /mnt/c/Users/madm/keystore/ronaldo.jks
+android.keyalias = ronaldomedeiros
+android.keystore_passwd = RonFisio@2024!Mdf
+android.keyalias_passwd = RonFisio@2024!Mdf
+
 # Proteção: obfusca a camada Java do wrapper
 android.enable_proguard = True
 

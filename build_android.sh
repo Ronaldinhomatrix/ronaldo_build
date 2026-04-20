@@ -39,12 +39,34 @@ pip3 install --user --upgrade --break-system-packages buildozer "cython<3.0"
 
 export PATH="$HOME/.local/bin:$PATH"
 
-echo "=== 4. Gerando APK (debug) ==="
+echo "=== 3b. Criando keystore de release (se não existir) ==="
+KEYSTORE_DIR="/mnt/c/Users/madm/keystore"
+KEYSTORE_PATH="$KEYSTORE_DIR/ronaldo.jks"
+mkdir -p "$KEYSTORE_DIR"
+if [ ! -f "$KEYSTORE_PATH" ]; then
+    echo "Gerando keystore..."
+    keytool -genkey -v \
+        -keystore "$KEYSTORE_PATH" \
+        -alias ronaldomedeiros \
+        -keyalg RSA \
+        -keysize 2048 \
+        -validity 10000 \
+        -storepass "RonFisio@2024!Mdf" \
+        -keypass "RonFisio@2024!Mdf" \
+        -dname "CN=Ronaldo Medeiros, OU=OperantLab, O=OperantLab, L=Brasil, S=Brasil, C=BR"
+    echo "========================================"
+    echo "KEYSTORE CRIADA: $KEYSTORE_PATH"
+    echo "SENHA: RonFisio@2024!Mdf"
+    echo "Guarde esta senha — necessária para atualizar o app no futuro!"
+    echo "========================================"
+fi
+
+echo "=== 4. Gerando APK (release) ==="
 # Remove APKs antigos para garantir que o script copie o correto
 rm -f "$PROJETO_WSL/bin/"*.apk
 # Força recópia dos arquivos fonte (preserva SDK/NDK/Python compilados)
 rm -rf "$PROJETO_WSL/.buildozer/android/app"
-buildozer android debug
+buildozer android release
 
 echo "=== 5. Copiando APK de volta para Windows ==="
 APK=$(ls -t bin/*.apk 2>/dev/null | head -1)
