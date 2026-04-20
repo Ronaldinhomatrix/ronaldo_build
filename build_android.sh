@@ -68,22 +68,43 @@ rm -f "$PROJETO_WSL/bin/"*.apk
 rm -rf "$PROJETO_WSL/.buildozer/android/app"
 buildozer android release
 
-echo "=== 5. Copiando APK de volta para Windows ==="
-APK=$(ls -t bin/*.apk 2>/dev/null | head -1)
-if [ -n "$APK" ]; then
-    cp "$APK" "$PROJETO_WIN/Instalador/RonaldoMedeirosFisiologista_v2.8.apk"
-    echo "APK copiado para: C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.8.apk"
-else
-    # Fallback: verifica se gerou .aab (não serve para instalação direta)
-    AAB=$(ls -t bin/*.aab 2>/dev/null | head -1)
-    if [ -n "$AAB" ]; then
-        echo "AVISO: buildozer gerou .aab em vez de .apk."
-        echo "Para distribuição direta, é necessário .apk."
-        echo "Verifique se android.release_artifact = apk está na seção [app] do buildozer.spec"
-        exit 1
-    fi
-    echo "ERRO: nenhum APK ou AAB encontrado em bin/"
+echo "=== 5. Assinando e copiando APK para Windows ==="
+UNSIGNED=$(ls -t bin/*.apk 2>/dev/null | head -1)
+if [ -z "$UNSIGNED" ]; then
+    echo "ERRO: APK não encontrado em bin/"
     exit 1
 fi
+
+# Localiza apksigner e zipalign no SDK baixado pelo buildozer
+APKSIGNER=$(find ~/.buildozer/android/platform/android-sdk/build-tools -name "apksigner" 2>/dev/null | sort -V | tail -1)
+ZIPALIGN=$(find ~/.buildozer/android/platform/android-sdk/build-tools -name "zipalign" 2>/dev/null | sort -V | tail -1)
+
+if [ -z "$APKSIGNER" ]; then
+    echo "ERRO: apksigner não encontrado no SDK."
+    exit 1
+fi
+
+ALIGNED="$PROJETO_WSL/bin/aligned.apk"
+SIGNED="$PROJETO_WSL/bin/signed-release.apk"
+
+echo "Alinhando APK..."
+"$ZIPALIGN" -f 4 "$UNSIGNED" "$ALIGNED"
+
+echo "Assinando APK com keystore..."
+"$APKSIGNER" sign \
+    --ks "$KEYSTORE_PATH" \
+    --ks-key-alias ronaldomedeiros \
+    --ks-pass pass:"RonFisio@2024!Mdf" \
+    --key-pass pass:"RonFisio@2024!Mdf" \
+    --out "$SIGNED" \
+    "$ALIGNED"
+
+rm -f "$ALIGNED"
+
+echo "Verificando assinatura..."
+"$APKSIGNER" verify --verbose "$SIGNED" | grep -E "Verified|error" || true
+
+cp "$SIGNED" "$PROJETO_WIN/Instalador/RonaldoMedeirosFisiologista_v2.8.apk"
+echo "APK assinado copiado para: C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.8.apk"
 
 echo "=== Build concluido com sucesso! ==="
