@@ -218,12 +218,15 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
 
     def _aplicar_treinos_firebase(self, novos_treinos, obs_cliente=None, novos_nomes=None):
         """Chamado na thread principal. Substitui treinos e salva localmente."""
-        if obs_cliente:
-            for exs in novos_treinos.values():
-                for ex in exs:
-                    obs = obs_cliente.get(ex.get('id', ''))
-                    if obs:
-                        ex['obs'] = obs
+        if obs_cliente is None:
+            obs_cliente = {}
+            
+        for exs in novos_treinos.values():
+            for ex in exs:
+                # Sincroniza a observação: se o treinador limpou no painel (obs_cliente), 
+                # o campo 'obs' do exercício também deve ser limpo no app.
+                ex['obs'] = obs_cliente.get(ex.get('id', ''), "")
+
         self.treinos = novos_treinos
         with open(TREINOS_FILE, 'w', encoding='utf-8') as f:
             json.dump(self.treinos, f, ensure_ascii=False, indent=2)

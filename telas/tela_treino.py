@@ -116,7 +116,28 @@ class CardExercicio(MDCard):
                 on_release=lambda x: self.tela._ver_midia(self.ex),
             ))
         conteudo.add_widget(linha1)
-        conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
+
+        # ── Nova Linha: Observação do Treinador (Apenas se existir) ───────
+        obs_trainer = self.ex.get('obs_trainer', '').strip()
+        if obs_trainer:
+            _h_obs_t = Window.height * 0.035
+            linha_obs_t = MDBoxLayout(
+                orientation='horizontal',
+                size_hint_y=None,
+                height=_h_obs_t,
+                padding=[_pad_h, 0, _pad_h, 0],
+            )
+            linha_obs_t.add_widget(MDLabel(
+                text=f"Obs Ronaldo: {obs_trainer}",
+                font_size='13sp',
+                italic=True,
+                theme_text_color='Custom',
+                text_color=get_color_from_hex('#3498DB'), # Azul de destaque
+            ))
+            conteudo.add_widget(linha_obs_t)
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
+        else:
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
 
         # ── linhas 2 e 3: séries/peso e repetições ───────────────────────────
         _h2        = Window.height * 0.038   # altura de cada linha de info
@@ -215,7 +236,7 @@ class CardExercicio(MDCard):
             size=(_btn_w, _btn_h),
             font_size=_fs3,
             rounded_button=True,
-            md_bg_color=COR_OBS if tem_obs else self._cor_pendente,
+            md_bg_color=COR_CONCLUIDO if tem_obs else self._cor_pendente,
             on_release=lambda x: self.tela._editar_obs(self.ex, self),
         )
         linha3.add_widget(self._btn_obs)
@@ -365,19 +386,32 @@ class TelaTreino(MDScreen):
 
     def _executar_conclusao(self, dlg):
         dlg.dismiss()
+        app = MDApp.get_running_app()
+        
+        # 1. Marcar todos como feitos e LIMPAR observações
         for card in self._cards:
+            # Marca como feito visualmente
             if not card._feito:
                 card._feito = True
                 card._btn_feito.text = '✓ Feito'
                 card._btn_feito.md_bg_color = COR_CONCLUIDO
-        app = MDApp.get_running_app()
+            
+            # Limpa a observação do exercício no dicionário e visualmente no card
+            card.ex['obs'] = ""
+            card._btn_obs.text = 'Adicionar Observação'
+            card._btn_obs.md_bg_color = card._cor_pendente
+
+        # 2. Salva o treino concluído (isso envia o histórico e as observações limpas ao Firebase)
         exercicios = [c.ex for c in self._cards]
         app.salvar(treino=self.treino_atual, exercicios_concluidos=exercicios)
+        
+        # 3. Limpa progresso temporário e volta pra home
         app.progresso_treino = {}
         if app.treino_atual and app.treino_atual == self.treino_atual and app.cliente:
             app.treino_atual = ''
             import firebase_sync
             firebase_sync.limpar_treino_atual(app.cliente['id'])
+
         app.sm.current = 'home'
 
     # ── observações ───────────────────────────────────────────────────────────
@@ -419,13 +453,14 @@ class TelaTreino(MDScreen):
         dlg.dismiss()
 
         if tem_obs and app.cliente:
-            # Estado: Enviando...
+            # Estado: Enviando... (Amarelo Girassol)
             card._btn_obs.text = 'Enviando...'
-            card._btn_obs.md_bg_color = (0.5, 0.5, 0.5, 1) # Cinza neutro
+            card._btn_obs.md_bg_color = COR_OBS
             
             def on_confirmado():
+                # Estado: Registrado (Verde Esmeralda)
                 card._btn_obs.text = 'Observação Registrada'
-                card._btn_obs.md_bg_color = COR_OBS
+                card._btn_obs.md_bg_color = COR_CONCLUIDO
 
             def on_erro(msg):
                 card._btn_obs.text = 'Erro (Tentar de novo)'

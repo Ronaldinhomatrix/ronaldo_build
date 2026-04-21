@@ -136,11 +136,15 @@
             <td>
               <input class="form-control form-control-sm bg-dark text-light border-secondary"
                      name="peso" value="{{ ex.peso }}" placeholder="ex: 80kg" required>
+              <input class="form-control form-control-sm bg-dark text-warning border-secondary mt-1"
+                     name="obs_trainer" value="{{ ex.get('obs_trainer', '') }}"
+                     placeholder="Obs do Treinador (opcional)" style="font-size: 0.8rem;">
             </td>
             <td>
-              {% if ex.obs %}
+              {% set obs_texto = cliente.obs_cliente.get(ex.id) %}
+              {% if obs_texto %}
                 <div class="d-flex align-items-center gap-2">
-                  <span class="text-warning small" style="max-width:200px; display:inline-block;">{{ ex.obs }}</span>
+                  <span class="text-warning small" style="max-width:200px; display:inline-block;">{{ obs_texto }}</span>
                   <form method="post" action="/cliente/{{ cliente.id }}/obs/limpar" class="d-inline">
                     <input type="hidden" name="ex_id" value="{{ ex.id }}">
                     <button class="btn btn-sm btn-outline-secondary p-0 px-1" title="Limpar observação"
@@ -220,6 +224,11 @@
           <input class="form-control form-control-sm bg-dark text-light border-secondary"
                  name="peso" placeholder="ex: 80kg" style="width:100px" required>
         </div>
+        <div style="min-width:200px">
+          <label class="form-label small text-warning mb-1">Obs Treinador (opcional)</label>
+          <input class="form-control form-control-sm bg-dark text-warning border-secondary"
+                 name="obs_trainer" placeholder="Instrução técnica...">
+        </div>
         <div class="align-self-end">
           <button class="btn btn-sm btn-primary">Adicionar</button>
         </div>
@@ -283,7 +292,7 @@
   <div class="card-body p-0">
     <table class="table table-dark table-sm mb-0">
       <thead><tr>
-        <th>Exercício</th><th>Séries e Rep</th><th>Carga</th><th>Status</th><th>Evolução de carga</th>
+        <th>Exercício</th><th>Séries e Rep</th><th>Carga</th><th>Obs. Aluno</th><th>Status</th><th>Evolução</th>
       </tr></thead>
       <tbody>
         {% for ex in sessao.exercicios %}
@@ -291,6 +300,13 @@
           <td>{{ ex.nome }}</td>
           <td>{{ ex.series }}</td>
           <td>{{ ex.peso }}</td>
+          <td>
+            {% if ex.get('obs') %}
+              <small class="text-warning">{{ ex.obs }}</small>
+            {% else %}
+              <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
           <td>
             {% if ex.concluido %}
               <span class="badge bg-success">✓ Concluído</span>

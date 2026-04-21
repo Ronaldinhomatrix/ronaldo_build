@@ -197,16 +197,6 @@ class TelaHome(MDScreen):
         root.add_widget(scroll)
 
         # ── rodapé fixo (sempre visível, fora do scroll) ──────────────────────
-        self._lbl_sync = MDLabel(
-            text='',
-            halign='center',
-            font_style='Caption',
-            theme_text_color='Secondary',
-            size_hint_y=None,
-            height=dp(20),
-        )
-        root.add_widget(self._lbl_sync)
-
         rodape = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
@@ -218,12 +208,6 @@ class TelaHome(MDScreen):
             size_hint_x=1,
             height=dp(44),
             on_release=lambda x: self._abrir_historico_atividade(),
-        ))
-        rodape.add_widget(MDFlatButton(
-            text='Sincronizar',
-            size_hint_x=1,
-            height=dp(44),
-            on_release=lambda x: self._sincronizar(),
         ))
         rodape.add_widget(MDFlatButton(
             text='Sobre',
@@ -278,28 +262,6 @@ class TelaHome(MDScreen):
         tela = app.sm.get_screen('treino')
         tela.carregar(treino)
         app.sm.current = 'treino'
-
-    def _sincronizar(self):
-        app = MDApp.get_running_app()
-        if not app.cliente:
-            return
-        self._lbl_sync.text = 'Sincronizando...'
-        def _run():
-            import firebase_sync
-            dados = firebase_sync.buscar_cliente_completo(app.cliente['id'])
-            def _aplicar(dt):
-                if dados is None:
-                    self._lbl_sync.text = 'Erro ao conectar com o servidor.'
-                    return
-                if dados.get('trainer_editou'):
-                    app._aplicar_treinos_firebase(dados['treinos'])
-                    self._lbl_sync.text = 'Treinos atualizados!'
-                    self._reconstruir_botoes()
-                else:
-                    self._lbl_sync.text = 'Treinos já estão atualizados.'
-                Clock.schedule_once(lambda dt2: setattr(self._lbl_sync, 'text', ''), 4)
-            Clock.schedule_once(_aplicar, 0)
-        threading.Thread(target=_run, daemon=True).start()
 
     def _abrir_historico_atividade(self):
         MDApp.get_running_app().sm.current = 'atividade'

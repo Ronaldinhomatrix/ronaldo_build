@@ -347,6 +347,7 @@ def add_exercicio(cliente_id):
     repeticoes  = request.form.get('repeticoes', '').strip()
     peso        = request.form.get('peso', '').strip()
     ex_banco_id = request.form.get('ex_banco_id', '').strip()
+    obs_trainer = request.form.get('obs_trainer', '').strip()
 
     if not nome:
         return redirect(url_for('ver_cliente', cliente_id=cliente_id))
@@ -355,8 +356,14 @@ def add_exercicio(cliente_id):
     if cliente is None:
         return 'Cliente não encontrado.', 404
 
-    ex = {'id': str(uuid.uuid4()), 'nome': nome, 'series': series,
-          'repeticoes': repeticoes, 'peso': peso}
+    ex = {
+        'id': str(uuid.uuid4())[:8], 
+        'nome': nome, 
+        'series': series,
+        'repeticoes': repeticoes, 
+        'peso': peso,
+        'obs_trainer': obs_trainer
+    }
     if ex_banco_id:
         ex['ex_banco_id'] = ex_banco_id
 
@@ -396,6 +403,7 @@ def edit_exercicio(cliente_id):
     series     = request.form.get('series', '').strip()
     repeticoes = request.form.get('repeticoes', '').strip()
     peso       = request.form.get('peso', '').strip()
+    obs_trainer = request.form.get('obs_trainer', '').strip()
 
     cliente = _carregar_cliente(cliente_id)
     if cliente is None:
@@ -403,9 +411,10 @@ def edit_exercicio(cliente_id):
 
     for ex in cliente['treinos'].get(treino, []):
         if ex['id'] == ex_id:
-            ex['series']     = series
-            ex['repeticoes'] = repeticoes
-            ex['peso']       = peso
+            ex['series']      = series
+            ex['repeticoes']  = repeticoes
+            ex['peso']        = peso
+            ex['obs_trainer'] = obs_trainer
             break
     _doc(cliente_id).update({
         'treinos':        json.dumps(cliente['treinos'], ensure_ascii=False),
