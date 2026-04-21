@@ -232,6 +232,7 @@ def _carregar_cliente(cliente_id):
         'pode_editar':    d.get('pode_editar', True),
         'treino_atual':   treino_atual_manual,
         'proximo_treino': proximo,
+        'obs_cliente':    obs_cliente,
         'sessoes':        _sessoes_historico(atividade, historico_pesos),
     }
 
