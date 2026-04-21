@@ -523,7 +523,10 @@ def limpar_obs(cliente_id):
         # Limpa todas as observações do cliente
         obs = {}
         
-    _doc(cliente_id).update({'obs_cliente': obs})
+    _doc(cliente_id).update({
+        'obs_cliente': obs,
+        'trainer_editou': True
+    })
     return redirect(url_for('ver_cliente', cliente_id=cliente_id))
 
 
