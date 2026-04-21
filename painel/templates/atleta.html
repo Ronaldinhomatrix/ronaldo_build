@@ -131,24 +131,23 @@
           <td class="fw-semibold text-light">{{ ex.nome }}</td>
 
           {# edição inline: só séries e carga #}
-          <form method="post" action="/cliente/{{ cliente.id }}/exercicio/edit"
-                style="display:contents">
-            <input type="hidden" name="treino" value="{{ letra }}">
-            <input type="hidden" name="ex_id"  value="{{ ex.id }}">
+          <form id="form-edit-{{ ex.id }}" method="post" action="/cliente/{{ cliente.id }}/exercicio/edit" style="display:none"></form>
+            <input type="hidden" name="treino" value="{{ letra }}" form="form-edit-{{ ex.id }}">
+            <input type="hidden" name="ex_id"  value="{{ ex.id }}" form="form-edit-{{ ex.id }}">
             <td>
               <input class="form-control form-control-sm bg-dark text-light border-secondary"
-                     name="series" value="{{ ex.series }}" placeholder="ex: 3" required>
+                     name="series" value="{{ ex.series }}" placeholder="ex: 3" required form="form-edit-{{ ex.id }}">
             </td>
             <td>
               <input class="form-control form-control-sm bg-dark text-light border-secondary"
-                     name="repeticoes" value="{{ ex.get('repeticoes', '') }}" placeholder="ex: 12">
+                     name="repeticoes" value="{{ ex.get('repeticoes', '') }}" placeholder="ex: 12" form="form-edit-{{ ex.id }}">
             </td>
             <td>
               <input class="form-control form-control-sm bg-dark text-light border-secondary"
-                     name="peso" value="{{ ex.peso }}" placeholder="ex: 80kg" required>
+                     name="peso" value="{{ ex.peso }}" placeholder="ex: 80kg" required form="form-edit-{{ ex.id }}">
               <input class="form-control form-control-sm bg-dark text-warning border-secondary mt-1"
                      name="obs_trainer" value="{{ ex.get('obs_trainer', '') }}"
-                     placeholder="Obs do Treinador (opcional)" style="font-size: 0.8rem;">
+                     placeholder="Obs do Treinador (opcional)" style="font-size: 0.8rem;" form="form-edit-{{ ex.id }}">
             </td>
             <td>
               {% set obs_texto = cliente.obs_cliente.get(ex.id) %}
@@ -166,14 +165,13 @@
               {% endif %}
             </td>
             <td class="text-end" style="white-space:nowrap">
-              <button class="btn btn-sm btn-outline-success me-1">💾 Salvar</button>
-          </form>
-          <form method="post" action="/cliente/{{ cliente.id }}/exercicio/remove"
-                onsubmit="return confirm('Remover {{ ex.nome }}?')" class="d-inline">
-            <input type="hidden" name="treino" value="{{ letra }}">
-            <input type="hidden" name="ex_id"  value="{{ ex.id }}">
-            <button class="btn btn-sm btn-outline-danger">✕ Remover</button>
-          </form>
+              <button type="submit" form="form-edit-{{ ex.id }}" class="btn btn-sm btn-outline-success me-1">💾 Salvar</button>
+              <form method="post" action="/cliente/{{ cliente.id }}/exercicio/remove"
+                    onsubmit="return confirm('Remover {{ ex.nome }}?')" class="d-inline">
+                <input type="hidden" name="treino" value="{{ letra }}">
+                <input type="hidden" name="ex_id"  value="{{ ex.id }}">
+                <button class="btn btn-sm btn-outline-danger">✕ Remover</button>
+              </form>
             </td>
         </tr>
         {% endfor %}

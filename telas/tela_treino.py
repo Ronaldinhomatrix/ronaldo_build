@@ -120,7 +120,10 @@ class CardExercicio(MDCard):
         # ── Nova Linha: Observação do Treinador (Apenas se existir) ───────
         obs_trainer = self.ex.get('obs_trainer', '').strip()
         if obs_trainer:
-            _h_obs_t = Window.height * 0.035
+            # Aumentamos o espaçamento antes da obs
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas * 1.5))
+            
+            _h_obs_t = Window.height * 0.04  # Altura levemente maior para a linha
             linha_obs_t = MDBoxLayout(
                 orientation='horizontal',
                 size_hint_y=None,
@@ -128,14 +131,16 @@ class CardExercicio(MDCard):
                 padding=[_pad_h, 0, _pad_h, 0],
             )
             linha_obs_t.add_widget(MDLabel(
-                text=f"Obs Ronaldo: {obs_trainer}",
-                font_size='13sp',
+                text=obs_trainer,  # Removido "Obs Ronaldo:"
+                font_size='14sp',  # Aumentado levemente para 14sp
                 italic=True,
                 theme_text_color='Custom',
                 text_color=get_color_from_hex('#3498DB'), # Azul de destaque
             ))
             conteudo.add_widget(linha_obs_t)
-            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
+            
+            # Aumentamos o espaçamento depois da obs
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas * 1.5))
         else:
             conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
 
