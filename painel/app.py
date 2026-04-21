@@ -259,14 +259,20 @@ def logout():
 @login_required
 def index():
     docs = _col().stream()
-    clientes = [
-        {
+    clientes = []
+    for d in docs:
+        data = d.to_dict()
+        obs = data.get('obs_cliente', {}) or {}
+        # Conta quantas chaves (ID do exercício) têm observação não vazia
+        tem_obs = any(v.strip() for v in obs.values()) if obs else False
+        
+        clientes.append({
             'id':            d.id,
-            'nome':          d.to_dict().get('nome', '(sem nome)'),
-            'data_admissao': d.to_dict().get('data_admissao', ''),
-        }
-        for d in docs
-    ]
+            'nome':          data.get('nome', '(sem nome)'),
+            'data_admissao': data.get('data_admissao', ''),
+            'tem_obs':       tem_obs
+        })
+
     clientes.sort(key=lambda c: c['nome'])
     return render_template('index.html', clientes=clientes)
 

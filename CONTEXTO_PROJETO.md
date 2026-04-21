@@ -103,6 +103,33 @@ O script faz automaticamente:
 
 ---
 
+## 4.1. Fluxo de Atualização (Deploy)
+
+Para que as alterações no código reflitam no servidor (Render) e no Telegram:
+
+1. **Configurar Identidade (Apenas uma vez no PC):**
+   ```powershell
+   git config --global user.email "seu-email@exemplo.com"
+   git config --global user.name "Ronaldo Medeiros"
+   ```
+
+2. **Enviar para o GitHub/Render:**
+   No Terminal do Windows (PowerShell):
+   ```powershell
+   git add .
+   git commit -m "Descricao da mudanca (ex: Correcao de cores)"
+   git push
+   ```
+   *O Render detectará o push e atualizará o serviço automaticamente em ~5 min.*
+
+3. **Gerar Novo APK:**
+   No Terminal WSL (Ubuntu):
+   ```bash
+   bash /mnt/c/ronaldo_build/build_android.sh
+   ```
+
+---
+
 ## 5. Como o Firebase funciona no app
 
 O app NÃO usa o SDK oficial do Firebase. Usa a REST API do Firestore diretamente via `requests`.
