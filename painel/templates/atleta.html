@@ -12,6 +12,16 @@
   <a href="/cliente/{{ cliente.id }}/exportar/completo"
      class="btn btn-sm btn-outline-secondary me-2"
      title="Exporta todos os treinos, atividade, histórico e observações do cliente">⬇ Dados completos</a>
+
+  <button class="btn btn-sm btn-outline-warning me-2"
+          onclick="document.getElementById('import-full-file').click()"
+          title="Restaura todos os dados a partir de um arquivo JSON">⬆ Importar Backup</button>
+  <form id="form-import-full" method="post" action="/cliente/{{ cliente.id }}/importar/completo"
+        enctype="multipart/form-data" class="d-none">
+    <input type="file" id="import-full-file" name="arquivo" accept=".json"
+           onchange="if(confirm('ATENÇÃO: Isso apagará TODOS os treinos, histórico e atividades atuais deste cliente e os substituirá pelo arquivo de backup. Deseja continuar?')) document.getElementById('form-import-full').submit()">
+  </form>
+
   <a href="/cliente/{{ cliente.id }}/exportar/progresso"
      class="btn btn-sm btn-outline-secondary me-2"
      title="Exporta sessões e evolução de carga por exercício">⬇ Progresso</a>

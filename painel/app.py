@@ -604,9 +604,50 @@ def exportar_completo(cliente_id):
         'obs_cliente':     obs_cliente,
     }
 
-    conteudo     = json.dumps(dados, ensure_ascii=False, indent=2).encode('utf-8')
-    nome_cliente = d.get('nome', 'cliente').replace(' ', '_')
-    nome_arquivo = f'dados_{nome_cliente}_{datetime.now().strftime("%Y%m%d")}.json'
+    res = make_response(conteudo)
+    res.headers['Content-Disposition'] = f'attachment; filename={nome_arquivo}'
+    res.headers['Content-Type']        = 'application/json'
+    return res
+
+
+@app.route('/cliente/<cliente_id>/importar/completo', methods=['POST'])
+@login_required
+def importar_completo(cliente_id):
+    arquivo = request.files.get('arquivo')
+    if not arquivo:
+        return redirect(url_for('ver_cliente', cliente_id=cliente_id))
+
+    try:
+        dados = json.load(arquivo)
+        
+        # 1. Reconstruir Treinos e Nomes
+        novos_treinos = {}
+        novos_nomes = {}
+        for letra, info in dados.get('treinos', {}).items():
+            novos_treinos[letra] = info.get('exercicios', [])
+            novos_nomes[letra] = info.get('nome', '')
+
+        # 2. Preparar update
+        update_data = {
+            'treinos':        json.dumps(novos_treinos, ensure_ascii=False),
+            'treinos_nomes':  json.dumps(novos_nomes, ensure_ascii=False),
+            'atividade':      json.dumps(dados.get('atividade', []), ensure_ascii=False),
+            'historico':      json.dumps(dados.get('historico_pesos', {}), ensure_ascii=False),
+            'obs_cliente':    dados.get('obs_cliente', {}),
+            'trainer_editou': True
+        }
+
+        # 3. Restaurar campos de texto se existirem no backup
+        if 'cliente' in dados:
+            if dados['cliente'].get('treino_atual'):
+                update_data['treino_atual'] = dados['cliente']['treino_atual']
+
+        _doc(cliente_id).update(update_data)
+        
+    except Exception as e:
+        print(f"Erro na importação completa: {e}")
+        
+    return redirect(url_for('ver_cliente', cliente_id=cliente_id))
 
     return send_file(
         io.BytesIO(conteudo),
