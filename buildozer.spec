@@ -19,11 +19,11 @@ android.release_artifact = apk
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
-android.archs = arm64-v8a
+android.archs = armeabi-v7a
 android.accept_sdk_license = True
 
 # Assinatura do APK release
-android.keystore = /mnt/c/Users/madm/keystore/ronaldo.jks
+android.keystore = /mnt/c/ronaldo_build/keystore/ronaldo.jks
 android.keyalias = ronaldomedeiros
 android.keystore_passwd = RonFisio@2024!Mdf
 android.keyalias_passwd = RonFisio@2024!Mdf
@@ -40,4 +40,3 @@ android.logcat_filters = *:S
 [buildozer]
 log_level = 2
 warn_on_root = 1
-cython = ~/.local/share/pipx/venvs/buildozer/bin/cython

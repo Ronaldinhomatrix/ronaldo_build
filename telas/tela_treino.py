@@ -19,9 +19,10 @@ from kivymd.uix.textfield import MDTextField
 from kivymd.uix.toolbar import MDTopAppBar
 
 
-COR_CONCLUIDO = get_color_from_hex('#388E3C')
-COR_ACCENT    = get_color_from_hex('#5b9cf6')
-COR_OBS       = get_color_from_hex('#F9A825')
+COR_CONCLUIDO = get_color_from_hex('#2ECC71')  # Verde Esmeralda
+COR_ACCENT    = get_color_from_hex('#3498DB')  # Azul Peter River
+COR_OBS       = get_color_from_hex('#F1C40F')  # Amarelo Girassol
+COR_PENDENTE  = get_color_from_hex('#3E4A59')  # Azul Ardósia (mais visível que o cinza)
 
 
 class CardExercicio(MDCard):
@@ -44,14 +45,17 @@ class CardExercicio(MDCard):
             size_hint=(1, None),
             padding=0,
             spacing=0,
-            ripple_behavior=False,
+            ripple_behavior=True,
+            md_bg_color=get_color_from_hex('#2C2C2E'),  # Fundo do card mais suave que o preto
+            radius=[dp(12), dp(12), dp(12), dp(12)],   # Bordas arredondadas
+            elevation=2,
             **kwargs,
         )
         self.ex = ex
         self.tela = tela
         app = MDApp.get_running_app()
         self._feito = app.progresso_treino.get('feitos', {}).get(ex.get('id', ''), False)
-        self._cor_pendente = tuple(self.md_bg_color)
+        self._cor_pendente = COR_PENDENTE
         self._tem_video = os.path.exists(self._caminho_video(ex.get('nome', '')))
         self._build()
 
@@ -90,7 +94,7 @@ class CardExercicio(MDCard):
             size_hint_y=None,
             height=_h1,
             padding=[_pad_h, _pad_v, _pad_v, _pad_v],
-            md_bg_color=(0.357, 0.612, 0.965, 0.13),
+            md_bg_color=(0.204, 0.596, 0.859, 0.15),  # Azul bem suave (3498DB com alpha)
         )
         lbl_nome = Label(
             text=self.ex['nome'],
@@ -281,9 +285,10 @@ class TelaTreino(MDScreen):
         self._btn_concluir = MDRaisedButton(
             text='Registrar treino completo',
             size_hint=(1, None),
-            height=dp(52),
+            height=dp(56),
             rounded_button=True,
-            md_bg_color=(0.25, 0.25, 0.25, 1),
+            md_bg_color=(0.2, 0.2, 0.25, 1),
+            elevation=4,
             on_release=lambda x: self._confirmar_conclusao(),
         )
         root.add_widget(self._btn_concluir)
@@ -410,30 +415,62 @@ class TelaTreino(MDScreen):
         app = MDApp.get_running_app()
         app.salvar()
         tem_obs = bool(ex['obs'])
-        card._btn_obs.text = 'Observação Registrada' if tem_obs else 'Adicionar Observação'
-        card._btn_obs.md_bg_color = COR_OBS if tem_obs else card._cor_pendente
+        
         dlg.dismiss()
+
         if tem_obs and app.cliente:
+            # Estado: Enviando...
+            card._btn_obs.text = 'Enviando...'
+            card._btn_obs.md_bg_color = (0.5, 0.5, 0.5, 1) # Cinza neutro
+            
+            def on_confirmado():
+                card._btn_obs.text = 'Observação Registrada'
+                card._btn_obs.md_bg_color = COR_OBS
+
+            def on_erro(msg):
+                card._btn_obs.text = 'Erro (Tentar de novo)'
+                card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1) # Vermelho
+                print(f"Erro ao enviar observação: {msg}")
+
             import firebase_sync
-            firebase_sync.notificar_obs(app.cliente['nome'], ex['nome'], ex['obs'])
+            firebase_sync.notificar_obs(
+                app.cliente['nome'], 
+                ex['nome'], 
+                ex['obs'], 
+                on_success=on_confirmado,
+                on_error=on_erro
+            )
+        else:
+            # Se limpou a observação
+            card._btn_obs.text = 'Adicionar Observação'
+            card._btn_obs.md_bg_color = card._cor_pendente
 
     # ── mídia ─────────────────────────────────────────────────────────────────
 
     def _ver_midia(self, ex):
-        from kivy.uix.videoplayer import VideoPlayer
-        caminho = CardExercicio._caminho_video(ex.get('nome', ''))
-        player = VideoPlayer(
-            source=caminho,
-            state='play',
-            allow_stretch=True,
-        )
-        popup = Popup(
-            title=ex['nome'],
-            content=player,
-            size_hint=(1, 0.6),
-        )
-        popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
-        popup.open()
+        try:
+            from kivy.uix.videoplayer import VideoPlayer
+            caminho = CardExercicio._caminho_video(ex.get('nome', ''))
+            player = VideoPlayer(
+                source=caminho,
+                state='play',
+                allow_stretch=True,
+            )
+            popup = Popup(
+                title=ex['nome'],
+                content=player,
+                size_hint=(1, 0.6),
+            )
+            popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
+            popup.open()
+        except Exception as e:
+            print(f"Erro ao carregar vídeo: {e}")
+            self.dialog_erro = MDDialog(
+                title="Vídeo Indisponível",
+                text="Não foi possível reproduzir o vídeo neste dispositivo.\nNo Windows, verifique se o 'ffpyplayer' está instalado.",
+                buttons=[MDRaisedButton(text="FECHAR", on_release=lambda x: self.dialog_erro.dismiss())]
+            )
+            self.dialog_erro.open()
 
     # ── histórico de peso ─────────────────────────────────────────────────────
 

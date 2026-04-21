@@ -158,49 +158,27 @@ def buscar_cliente_completo(cliente_id):
         return None
 
 
-def notificar_obs(cliente_nome, ex_nome, obs_texto, on_success=None, on_error=None, retentativas=3):
-    """
-    Avisa o treinador sobre nova observação do cliente (background).
-    Tenta automaticamente 'retentativas' vezes em caso de timeout/erro.
-    """
+def notificar_obs(cliente_nome, ex_nome, obs_texto):
+    """Avisa o treinador sobre nova observação do cliente (background)."""
     def _run():
-        from kivy.clock import Clock
-        import time
-        
-        for tentativa in range(retentativas):
-            try:
-                from firebase_config import PAINEL_URL, NOTIF_TOKEN
-                url  = f'{PAINEL_URL}/notificar-obs'
-                body = json.dumps({
-                    'cliente_nome': cliente_nome,
-                    'ex_nome':      ex_nome,
-                    'obs':          obs_texto,
-                }).encode('utf-8')
-                req = urllib.request.Request(
-                    url, data=body,
-                    headers={
-                        'Content-Type': 'application/json',
-                        'X-Token':      NOTIF_TOKEN,
-                        'User-Agent':   'RonaldoApp/2.8'
-                    },
-                )
-                # Timeout menor por tentativa para não demorar demais no total
-                urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT)
-                
-                if on_success:
-                    Clock.schedule_once(lambda dt: on_success(), 0)
-                return  # Sucesso! Sai da função.
-
-            except Exception as err:
-                erro_msg = str(err)
-                print(f'[Notif] Tentativa {tentativa + 1} falhou: {erro_msg}')
-                if tentativa < retentativas - 1:
-                    time.sleep(2)
-                else:
-                    if on_error:
-                        # Capturamos erro_msg em uma variável local para o lambda
-                        Clock.schedule_once(lambda dt, m=erro_msg: on_error(m), 0)
-
+        try:
+            from firebase_config import PAINEL_URL, NOTIF_TOKEN
+            url  = f'{PAINEL_URL}/notificar-obs'
+            body = json.dumps({
+                'cliente_nome': cliente_nome,
+                'ex_nome':      ex_nome,
+                'obs':          obs_texto,
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                url, data=body,
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-Token':      NOTIF_TOKEN,
+                },
+            )
+            urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT)
+        except Exception as e:
+            print(f'[Notif] erro: {e}')
     threading.Thread(target=_run, daemon=True).start()
 
 

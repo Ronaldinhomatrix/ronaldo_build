@@ -5,6 +5,10 @@ import threading
 import uuid
 from datetime import datetime
 
+# Força o motor gráfico ANGLE para evitar erros de OpenGL em placas Intel antigas no Windows
+if platform.system() == 'Windows':
+    os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
+
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 
 from kivy.clock import Clock
@@ -43,8 +47,9 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
 
     def build(self):
         self.title = 'Ronaldo Medeiros Fisiologista'
-        self.theme_cls.primary_palette = 'Blue'
+        self.theme_cls.primary_palette = 'BlueGray'
         self.theme_cls.theme_style = 'Dark'
+        self.theme_cls.primary_hue = '500'
 
         os.makedirs(DATA_DIR, exist_ok=True)
         self.pode_editar      = True

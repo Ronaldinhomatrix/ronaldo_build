@@ -5,6 +5,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.uix.image import Image as KivyImage
+from kivy.utils import get_color_from_hex
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDFlatButton, MDIconButton, MDRaisedButton
@@ -13,13 +14,13 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.label import MDLabel
 from kivymd.uix.screen import MDScreen
 
-COR_PROXIMO = (0.05, 0.30, 0.12, 1.0)
+COR_PROXIMO = get_color_from_hex('#2ECC71')  # Verde Esmeralda (Destaque do Dia)
 
 
 class _BotaoTreino(MDCard):
     """Card-botão de treino com subtítulo de conclusão e destaque."""
 
-    COR_PADRAO = (0.75, 0.75, 0.75, 1)
+    COR_PADRAO = get_color_from_hex('#2C2C2E')  # Cinza Grafite Suave
 
     def __init__(self, letra, nome, on_abrir, **kwargs):
         super().__init__(
@@ -48,7 +49,7 @@ class _BotaoTreino(MDCard):
             halign='center',
             font_style='H6',
             theme_text_color='Custom',
-            text_color=(0.1, 0.1, 0.1, 1),
+            text_color=(1, 1, 1, 1),  # Branco
             size_hint_x=1,
         ))
 
@@ -60,7 +61,7 @@ class _BotaoTreino(MDCard):
             halign='center',
             font_style='Caption',
             theme_text_color='Custom',
-            text_color=(0.3, 0.3, 0.3, 1),
+            text_color=(0.8, 0.8, 0.8, 1),  # Cinza claro
             size_hint_y=None,
             height=dp(0),
             opacity=0,
@@ -157,7 +158,7 @@ class TelaHome(MDScreen):
             halign='center',
             font_style='H6',
             theme_text_color='Custom',
-            text_color=(0.357, 0.612, 0.965, 1),
+            text_color=get_color_from_hex('#3498DB'),
             size_hint_y=None,
             height=dp(36),
         ))

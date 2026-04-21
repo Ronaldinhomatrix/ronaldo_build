@@ -807,7 +807,8 @@ def aplicar_template(cliente_id, letra):
 
 @app.route('/notificar-obs', methods=['POST'])
 def notificar_obs():
-    token = os.environ.get('NOTIF_TOKEN', '')
+    # Fallback para o token padrão caso a variável de ambiente não esteja definida
+    token = os.environ.get('NOTIF_TOKEN', 'notif2024!')
     if request.headers.get('X-Token') != token:
         return 'Não autorizado.', 403
 

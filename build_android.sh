@@ -4,7 +4,7 @@
 
 set -e
 
-PROJETO_WIN="/mnt/c/Users/madm/ronaldo_build"
+PROJETO_WIN="/mnt/c/ronaldo_build"
 PROJETO_WSL="$HOME/ronaldo_build"
 
 echo "=== 1. Copiando projeto para o filesystem Linux ==="
@@ -27,10 +27,12 @@ sudo apt-get update -qq
 sudo apt-get install -y -qq \
     git zip unzip openjdk-17-jdk \
     python3-pip python3-venv \
-    autoconf automake libtool pkg-config \
+    autoconf automake libtool pkg-config cmake patch \
     libffi-dev libssl-dev libsqlite3-dev \
     libncurses5-dev libncursesw5-dev \
     zlib1g-dev libbz2-dev libreadline-dev \
+    libgdbm-dev libdb5.3-dev libexpat1-dev \
+    liblzma-dev uuid-dev \
     ccache
 
 echo "=== 3. Instalando buildozer e cython ==="
@@ -40,7 +42,7 @@ pip3 install --user --upgrade --break-system-packages buildozer "cython<3.0"
 export PATH="$HOME/.local/bin:$PATH"
 
 echo "=== 3b. Criando keystore de release (se não existir) ==="
-KEYSTORE_DIR="/mnt/c/Users/madm/keystore"
+KEYSTORE_DIR="/mnt/c/ronaldo_build/keystore"
 KEYSTORE_PATH="$KEYSTORE_DIR/ronaldo.jks"
 mkdir -p "$KEYSTORE_DIR"
 if [ ! -f "$KEYSTORE_PATH" ]; then
