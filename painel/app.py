@@ -13,7 +13,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import io
 
-from flask import Flask, redirect, render_template, request, send_file, session, url_for
+from flask import Flask, redirect, render_template, request, send_file, session, url_for, make_response
 
 # ── Firebase Admin ────────────────────────────────────────────────────────────
 # Em produção: variável de ambiente FIREBASE_SA_JSON com o conteúdo do serviceAccount.json
@@ -603,6 +603,10 @@ def exportar_completo(cliente_id):
         'historico_pesos': historico_pesos,
         'obs_cliente':     obs_cliente,
     }
+
+    conteudo = json.dumps(dados, ensure_ascii=False, indent=2).encode('utf-8')
+    nome_cliente = d.get('nome', 'cliente').replace(' ', '_')
+    nome_arquivo = f'dados_{nome_cliente}_{datetime.now().strftime("%Y%m%d")}.json'
 
     res = make_response(conteudo)
     res.headers['Content-Disposition'] = f'attachment; filename={nome_arquivo}'
