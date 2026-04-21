@@ -94,7 +94,7 @@ class CardExercicio(MDCard):
             size_hint_y=None,
             height=_h1,
             padding=[_pad_h, _pad_v, _pad_v, _pad_v],
-            md_bg_color=(0.204, 0.596, 0.859, 0.15),  # Azul bem suave (3498DB com alpha)
+            md_bg_color=get_color_from_hex('#5DADE2'), # Azul Celeste (Mais vivo e azulado)
         )
         lbl_nome = Label(
             text=self.ex['nome'],
@@ -288,6 +288,8 @@ class TelaTreino(MDScreen):
 
         self.toolbar = MDTopAppBar(
             title='Treino',
+            md_bg_color=get_color_from_hex('#1A1A1A'), # Voltando ao Preto Carbono
+            elevation=0,
             left_action_items=[['arrow-left', lambda x: self._voltar()]],
         )
         root.add_widget(self.toolbar)
