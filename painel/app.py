@@ -495,6 +495,28 @@ def remove_treino(cliente_id):
     return redirect(url_for('ver_cliente', cliente_id=cliente_id))
 
 
+@app.route('/cliente/<cliente_id>/obs/limpar', methods=['POST'])
+@login_required
+def limpar_obs(cliente_id):
+    ex_id = request.form.get('ex_id')
+    cliente_snap = _doc(cliente_id).get()
+    if not cliente_snap.exists:
+        return 'Cliente não encontrado.', 404
+    
+    dados = cliente_snap.to_dict()
+    obs = dados.get('obs_cliente', {}) or {}
+    
+    if ex_id:
+        # Limpa observação de um exercício específico
+        obs.pop(ex_id, None)
+    else:
+        # Limpa todas as observações do cliente
+        obs = {}
+        
+    _doc(cliente_id).update({'obs_cliente': obs})
+    return redirect(url_for('ver_cliente', cliente_id=cliente_id))
+
+
 @app.route('/cliente/<cliente_id>/historico')
 @login_required
 def historico_cliente(cliente_id):

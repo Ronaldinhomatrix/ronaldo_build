@@ -139,7 +139,14 @@
             </td>
             <td>
               {% if ex.obs %}
-                <span class="text-warning small">{{ ex.obs }}</span>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="text-warning small" style="max-width:200px; display:inline-block;">{{ ex.obs }}</span>
+                  <form method="post" action="/cliente/{{ cliente.id }}/obs/limpar" class="d-inline">
+                    <input type="hidden" name="ex_id" value="{{ ex.id }}">
+                    <button class="btn btn-sm btn-outline-secondary p-0 px-1" title="Limpar observação"
+                            style="line-height:1; font-size:10px; border-color:rgba(255,255,255,0.1);">✕</button>
+                  </form>
+                </div>
               {% else %}
                 <span class="text-muted small">—</span>
               {% endif %}
