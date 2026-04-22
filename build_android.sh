@@ -24,16 +24,9 @@ echo "$(whoami) ALL=(ALL) NOPASSWD:ALL" | sudo -S tee /etc/sudoers.d/builduser >
 sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock /var/lib/apt/lists/lock 2>/dev/null || true
 sudo dpkg --configure -a 2>/dev/null || true
 sudo apt-get update -qq
-sudo apt-get install -y -qq \
-    git zip unzip openjdk-17-jdk \
-    python3-pip python3-venv \
-    autoconf automake libtool pkg-config cmake patch \
-    libffi-dev libssl-dev libsqlite3-dev \
-    libncurses5-dev libncursesw5-dev \
-    zlib1g-dev libbz2-dev libreadline-dev \
-    libgdbm-dev libdb5.3-dev libexpat1-dev \
-    liblzma-dev uuid-dev \
-    ccache
+# Remove ccache que causa Header Poisoning no WSL
+sudo apt-get purge -y ccache || true
+sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip python3-venv autoconf automake libtool pkg-config cmake patch libffi-dev libssl-dev libsqlite3-dev
 
 echo "=== 3. Instalando buildozer e cython ==="
 export PIP_BREAK_SYSTEM_PACKAGES=1
@@ -64,10 +57,24 @@ if [ ! -f "$KEYSTORE_PATH" ]; then
 fi
 
 echo "=== 4. Gerando APK (release) ==="
-# Remove APKs antigos para garantir que o script copie o correto
+# Limpeza e correção radical de ambiente para WSL
+unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH PKG_CONFIG_PATH PKG_CONFIG_LIBDIR CFLAGS CPPFLAGS LDFLAGS CC CXX NDK_CCACHE LD_LIBRARY_PATH LIBRARY_PATH
+
+# Isola o PATH (apenas o essencial)
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$HOME/.local/bin"
+
+# Desativa ccache completamente
+rm -rf "$HOME/.ccache"
+export USE_CCACHE=0
+export NDK_CCACHE=""
+
+# Remove APKs antigos
 rm -f "$PROJETO_WSL/bin/"*.apk
-# Força recópia dos arquivos fonte (preserva SDK/NDK/Python compilados)
-rm -rf "$PROJETO_WSL/.buildozer/android/app"
+
+# Limpa apenas os builds anteriores, sem quebrar o p4a
+rm -rf "$HOME/.buildozer/android/platform/build-arm64-v8a"
+
+# Gera o APK
 buildozer android release
 
 echo "=== 5. Assinando e copiando APK para Windows ==="
