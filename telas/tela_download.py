@@ -78,18 +78,27 @@ _FLAG_FILE  = 'videos_ok.flag'
 
 
 def pasta_videos():
+    import os
+    from kivymd.app import MDApp
     app = MDApp.get_running_app()
     if not app:
         return 'videos'
-    return os.path.join(app.user_data_dir, 'videos')
+    # Usa o diretório de dados do usuário para garantir permissão de escrita
+    caminho = os.path.join(app.user_data_dir, 'videos')
+    if not os.path.exists(caminho):
+        os.makedirs(caminho, exist_ok=True)
+    return caminho
 
 
 def videos_prontos():
+    import os
+    from kivymd.app import MDApp
     app = MDApp.get_running_app()
-    if not app:
+    if not app or not hasattr(app, 'user_data_dir'):
         return False
     flag = os.path.join(app.user_data_dir, 'videos_ok.flag')
     return os.path.exists(flag)
+
 
     flag = os.path.join(MDApp.get_running_app().user_data_dir, _FLAG_FILE)
     return os.path.exists(flag)

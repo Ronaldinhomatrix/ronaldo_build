@@ -32,7 +32,11 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
 
         # DEFINIÇÃO DINÂMICA DE CAMINHOS (Crucial para Android)
         # user_data_dir é a única pasta com permissão de escrita garantida
-        self.data_dir = self.user_data_dir
+        try:
+            self.data_dir = self.user_data_dir
+        except Exception:
+            self.data_dir = "." # Fallback temporário
+
         os.makedirs(self.data_dir, exist_ok=True)
         
         self.treinos_file       = os.path.join(self.data_dir, 'treinos.json')
@@ -48,8 +52,8 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             font_path = os.path.join(os.path.dirname(__file__), 'assets', 'fonts', 'ERASBD.TTF')
             if os.path.exists(font_path):
                 LabelBase.register(name='ErasBoldITC', fn_regular=font_path)
-        except Exception as e:
-            print(f"Erro ao carregar fonte: {e}")
+        except Exception:
+            pass
 
         self.pode_editar      = True
         self.treino_atual     = ''
@@ -62,14 +66,20 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         self.historico     = self._carregar(self.historico_file,     {})
         self.atividade     = self._carregar(self.atividade_file,     [])
 
-        # Importação tardia para evitar lentidão no loading
+        # Lógica de decisão de tela sem depender de get_running_app()
+        videos_ok = False
+        try:
+            flag = os.path.join(self.data_dir, 'videos_ok.flag')
+            videos_ok = os.path.exists(flag)
+        except:
+            pass
+
         from telas.tela_cadastro import TelaCadastro
         from telas.tela_home import TelaHome
         from telas.tela_treino import TelaTreino
         from telas.tela_historico import TelaHistorico
         from telas.tela_atividade import TelaAtividade
-        from telas.tela_configuracoes import TelaConfiguracoes
-        from telas.tela_download import TelaDownload, videos_prontos
+        from telas.tela_download import TelaDownload
 
         self.sm = ScreenManager(transition=SlideTransition())
         self.sm.add_widget(TelaDownload(name='download'))
@@ -78,9 +88,8 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         self.sm.add_widget(TelaTreino(name='treino'))
         self.sm.add_widget(TelaHistorico(name='historico'))
         self.sm.add_widget(TelaAtividade(name='atividade'))
-        self.sm.add_widget(TelaHome(name='configuracoes')) # Fallback simples
 
-        if not videos_prontos():
+        if not videos_ok:
             self.sm.current = 'download'
         elif self.cliente:
             self.sm.current = 'home'
