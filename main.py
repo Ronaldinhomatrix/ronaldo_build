@@ -50,7 +50,11 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         self.theme_cls.primary_hue = '500'
 
         # No Android, usamos user_data_dir para ter permissão de escrita
-        self.data_dir = self.user_data_dir
+        try:
+            self.data_dir = self.user_data_dir
+        except Exception:
+            self.data_dir = os.path.dirname(__file__)
+
         os.makedirs(self.data_dir, exist_ok=True)
         
         # Caminhos dos arquivos de dados

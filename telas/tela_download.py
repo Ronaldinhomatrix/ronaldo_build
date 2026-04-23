@@ -78,10 +78,19 @@ _FLAG_FILE  = 'videos_ok.flag'
 
 
 def pasta_videos():
-    return os.path.join(MDApp.get_running_app().user_data_dir, 'videos')
+    app = MDApp.get_running_app()
+    if not app:
+        return 'videos'
+    return os.path.join(app.user_data_dir, 'videos')
 
 
 def videos_prontos():
+    app = MDApp.get_running_app()
+    if not app:
+        return False
+    flag = os.path.join(app.user_data_dir, 'videos_ok.flag')
+    return os.path.exists(flag)
+
     flag = os.path.join(MDApp.get_running_app().user_data_dir, _FLAG_FILE)
     return os.path.exists(flag)
 
