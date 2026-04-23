@@ -142,13 +142,13 @@ class TelaHome(MDScreen):
         )
         header.bind(minimum_height=header.setter('height'))
 
-        # Foto com borda e destaque
-        tamanho_foto = Window.height * 0.22
+        # Foto com borda e destaque (Tamanho fixo inicial para evitar crash)
+        tamanho_foto = dp(160)
         
         foto_card = MDCard(
             size_hint=(None, None),
             size=(tamanho_foto, tamanho_foto),
-            radius=[tamanho_foto/2],
+            radius=[tamanho_foto/2, tamanho_foto/2, tamanho_foto/2, tamanho_foto/2],
             md_bg_color=(0, 0, 0, 0),
             line_color=get_color_from_hex('#5DADE2'),
             line_width=dp(1.5),
@@ -160,7 +160,7 @@ class TelaHome(MDScreen):
         sua_foto = FitImage(
             source='foto_perfil.jpg',
             size_hint=(1, 1),
-            radius=[tamanho_foto/2],
+            radius=[tamanho_foto/2, tamanho_foto/2, tamanho_foto/2, tamanho_foto/2],
         )
         foto_card.add_widget(sua_foto)
         header.add_widget(foto_card)

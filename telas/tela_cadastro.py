@@ -54,9 +54,10 @@ class TelaCadastro(MDScreen):
         cabecalho.add_widget(MDLabel(
             text='Ronaldo Medeiros',
             halign='center',
-            font_size='36sp',
+            font_size='42sp', # Aumentado de 36sp para 42sp
+            bold=True,        # Adicionado negrito para dar mais destaque
             size_hint_y=None,
-            height=dp(52),
+            height=dp(58),    # Ajustado de 52 para 58 para acomodar o texto maior
         ))
         cabecalho.add_widget(MDLabel(
             text='Fisiologista',
@@ -121,32 +122,29 @@ class TelaCadastro(MDScreen):
         cliente_id = str(uuid.uuid4())
         app.cliente = {'id': cliente_id, 'nome': nome}
 
-        with open(app.cliente_file, 'w', encoding='utf-8') as f:
-            json.dump(app.cliente, f, ensure_ascii=False, indent=2)
-
-        # Zera dados locais de qualquer cliente anterior
-        import main as _main
-        app.treinos   = {}
-        app.historico = {}
-        app.atividade = []
-        with open(_main.TREINOS_FILE,   'w', encoding='utf-8') as f:
-            json.dump(app.treinos,   f, ensure_ascii=False, indent=2)
-        with open(_main.HISTORICO_FILE, 'w', encoding='utf-8') as f:
-            json.dump(app.historico, f, ensure_ascii=False, indent=2)
-        with open(_main.ATIVIDADE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(app.atividade, f, ensure_ascii=False, indent=2)
-
-        # Salva backup na Downloads para sobreviver a reinstalações
-        backup_path = _main._pasta_downloads()
+        # Salva o arquivo do cliente
         try:
-            os.makedirs(backup_path, exist_ok=True)
-            backup_file = os.path.join(backup_path, 'ronaldo_cliente_backup.json')
-            with open(backup_file, 'w', encoding='utf-8') as f:
+            with open(app.cliente_file, 'w', encoding='utf-8') as f:
                 json.dump(app.cliente, f, ensure_ascii=False, indent=2)
+
+            # Zera dados locais usando os caminhos do app (não mais globais do main)
+            app.treinos   = {}
+            app.historico = {}
+            app.atividade = []
+            
+            with open(app.treinos_file, 'w', encoding='utf-8') as f:
+                json.dump(app.treinos, f, ensure_ascii=False, indent=2)
+            with open(app.historico_file, 'w', encoding='utf-8') as f:
+                json.dump(app.historico, f, ensure_ascii=False, indent=2)
+            with open(app.atividade_file, 'w', encoding='utf-8') as f:
+                json.dump(app.atividade, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f'[Backup] Não foi possível salvar backup: {e}')
+            print(f"Erro ao salvar arquivos iniciais: {e}")
 
         # Cria documento no Firestore (background)
-        firebase_sync.criar_cliente(cliente_id, nome)
+        try:
+            import firebase_sync
+            firebase_sync.criar_cliente(cliente_id, nome)
+        except: pass
 
         app.sm.current = 'home'

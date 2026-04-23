@@ -3,27 +3,21 @@ import os
 import platform
 import threading
 import uuid
+import traceback
 from datetime import datetime
 
-# 1. Configurações de Ambiente (Devem ser as primeiras)
+# 1. Configurações de Ambiente
 os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 if platform.system() == 'Windows':
     os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
-# 2. Imports do Kivy (Protegidos)
-try:
-    from kivy.clock import Clock
-    from kivy.core.text import LabelBase
-    from kivy.uix.screenmanager import ScreenManager, SlideTransition
-    from kivymd.app import MDApp
-except Exception as e:
-    print(f"Erro nos imports básicos: {e}")
+from kivy.clock import Clock
+from kivy.core.text import LabelBase
+from kivy.uix.screenmanager import ScreenManager, SlideTransition
+from kivymd.app import MDApp
+from kivy.uix.label import Label
 
-# 3. Import do Firebase (Pode causar crash se SSL falhar)
-try:
-    import firebase_sync
-except Exception as e:
-    print(f"Erro ao importar Firebase: {e}")
+import firebase_sync
 
 def _pasta_downloads():
     if platform.system() == 'Android':
@@ -37,11 +31,10 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.theme_cls.primary_palette = 'BlueGray'
             self.theme_cls.theme_style = 'Dark'
 
-            # Pasta de dados segura para Android
+            # Pasta de dados segura
             self.data_dir = self.user_data_dir
             os.makedirs(self.data_dir, exist_ok=True)
             
-            # Caminhos dos arquivos
             self.treinos_file       = os.path.join(self.data_dir, 'treinos.json')
             self.treinos_nomes_file = os.path.join(self.data_dir, 'treinos_nomes.json')
             self.historico_file     = os.path.join(self.data_dir, 'historico.json')
@@ -50,38 +43,32 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.sync_file          = os.path.join(self.data_dir, 'ultima_sync.json')
             self._CLIENTE_BACKUP    = os.path.join(_pasta_downloads(), 'ronaldo_cliente_backup.json')
 
-            # Registro de Fonte (Protegido contra case-sensitivity)
+            # Registro de Fonte
             try:
-                # Tenta vários caminhos possíveis para a fonte
-                fontes_possiveis = [
-                    os.path.join(os.path.dirname(__file__), 'assets', 'fonts', 'ERASBD.TTF'),
-                    os.path.join(os.path.dirname(__file__), 'assets', 'fonts', 'erasbd.ttf'),
-                    'assets/fonts/ERASBD.TTF'
-                ]
-                for p in fontes_possiveis:
-                    if os.path.exists(p):
-                        LabelBase.register(name='ErasBoldITC', fn_regular=p)
-                        break
+                font_path = os.path.join(os.path.dirname(__file__), 'assets', 'fonts', 'ERASBD.TTF')
+                if os.path.exists(font_path):
+                    LabelBase.register(name='ErasBoldITC', fn_regular=font_path)
             except: pass
 
             self.pode_editar      = True
             self.treino_atual     = ''
             self.progresso_treino = {}
             
-            # Carregamento resiliente
+            # Carregamento de dados
             self.cliente       = self._carregar(self.cliente_file, None) or self._recuperar_cliente_downloads()
             self.treinos       = self._carregar(self.treinos_file,       {})
             self.treinos_nomes = self._carregar(self.treinos_nomes_file, {})
             self.historico     = self._carregar(self.historico_file,     {})
             self.atividade     = self._carregar(self.atividade_file,     [])
 
-            # Import das telas (Dentro do build para evitar crash no loading)
+            # Importação das telas
             from telas.tela_cadastro import TelaCadastro
             from telas.tela_home import TelaHome
             from telas.tela_treino import TelaTreino
             from telas.tela_historico import TelaHistorico
             from telas.tela_atividade import TelaAtividade
-            from telas.tela_download import TelaDownload
+            from telas.tela_configuracoes import TelaConfiguracoes
+            from telas.tela_download import TelaDownload, videos_prontos
 
             self.sm = ScreenManager(transition=SlideTransition())
             self.sm.add_widget(TelaDownload(name='download'))
@@ -90,15 +77,9 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.sm.add_widget(TelaTreino(name='treino'))
             self.sm.add_widget(TelaHistorico(name='historico'))
             self.sm.add_widget(TelaAtividade(name='atividade'))
+            self.sm.add_widget(TelaConfiguracoes(name='configuracoes'))
 
-            # Verificação de vídeos sem travar
-            videos_ok = False
-            try:
-                flag = os.path.join(self.data_dir, 'videos_ok.flag')
-                videos_ok = os.path.exists(flag)
-            except: pass
-
-            if not videos_ok:
+            if not videos_prontos():
                 self.sm.current = 'download'
             elif self.cliente:
                 self.sm.current = 'home'
@@ -107,10 +88,9 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                 
             return self.sm
         except Exception as e:
-            print(f"ERRO CRÍTICO NO BUILD: {e}")
-            # Retorna uma tela de erro básica em vez de fechar
-            from kivy.uix.label import Label
-            return Label(text=f"Erro ao iniciar:\n{str(e)}")
+            error_msg = traceback.format_exc()
+            print(f"FATAL ERROR: {error_msg}")
+            return Label(text=f"Erro fatal ao iniciar:\n{error_msg}", font_size='12sp')
 
     def on_start(self):
         if self.cliente:
@@ -136,13 +116,17 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         return None
 
     def salvar(self, **kwargs):
-        # Simplificado para evitar crash em threads
+        # Salva em background para não travar a UI
         threading.Thread(target=self._executar_salvamento, kwargs=kwargs, daemon=True).start()
 
     def _executar_salvamento(self, **kwargs):
         try:
             with open(self.treinos_file, 'w', encoding='utf-8') as f:
                 json.dump(self.treinos, f)
+            with open(self.historico_file, 'w', encoding='utf-8') as f:
+                json.dump(self.historico, f)
+            with open(self.atividade_file, 'w', encoding='utf-8') as f:
+                json.dump(self.atividade, f)
             if self.cliente:
                 firebase_sync.salvar_dados(self.cliente['id'], self.historico, self.atividade)
         except: pass
@@ -152,10 +136,16 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             dados = firebase_sync.buscar_cliente_completo(self.cliente['id'])
             if dados and dados.get('trainer_editou'):
                 self.treinos = dados['treinos']
+                self.treinos_nomes = dados['treinos_nomes']
                 with open(self.treinos_file, 'w', encoding='utf-8') as f:
                     json.dump(self.treinos, f)
                 Clock.schedule_once(lambda dt: self.sm.get_screen('home')._reconstruir_botoes() if self.sm.has_screen('home') else None)
         except: pass
 
 if __name__ == '__main__':
-    RonaldoMedeirosFisiologistaApp().run()
+    try:
+        RonaldoMedeirosFisiologistaApp().run()
+    except Exception:
+        # Tenta gravar o erro num arquivo caso o build falhe antes do app abrir
+        with open("crash_log.txt", "w") as f:
+            f.write(traceback.format_exc())
