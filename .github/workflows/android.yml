@@ -1,26 +1,43 @@
-[app]
-title = Ronaldo Medeiros
-package.name = ronaldo_medeiros
-package.domain = com.ronaldomedeiros
-source.dir = .
-source.include_exts = py,ttf,png,jpg,mp4,json
-source.exclude_dirs = p4a_recipes,painel,.git,bin
-icon.filename = %(source.dir)s/icon_rm.png
-version = 1.0
+name: Build APK
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
 
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,ffpyplayer,ffmpeg,openssl,sqlite3,requests,urllib3
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
 
-orientation = portrait
-fullscreen = 0
-android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
-android.release_artifact = apk
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-android.api = 31
-android.minapi = 21
-android.ndk = 25b
-android.archs = arm64-v8a
-android.accept_sdk_license = True
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip python3-pip autoconf automake libtool \
+            pkg-config cmake patch libffi-dev libssl-dev libltdl-dev \
+            libgmp-dev libsqlite3-dev zlib1g-dev libncurses5-dev \
+            libncursesw5-dev libbz2-dev libreadline-dev libgdbm-dev \
+            libexpat1-dev liblzma-dev uuid-dev
+          
+          pip3 install --user --upgrade buildozer "cython<3.0"
 
-# Assinatura do APK release (Debug por enquanto)
-# android.keystore = /mnt/c/ronaldo_build/keystore/ronaldo.jks
-# ... (as linhas abaixo podem ficar comentadas se for build de debug)
+      - name: Build with Buildozer
+        run: |
+          export PATH=$PATH:$HOME/.local/bin
+          # Aceita licenças e inicia o build
+          yes | buildozer android debug
+        env:
+          BUILDOZER_ALLOW_ORG_NAME_START_WITH_DIGIT: 1
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ronaldo-medeiros-apk
+          path: bin/*.apk
