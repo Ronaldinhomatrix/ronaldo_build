@@ -1,5 +1,8 @@
 name: Build APK
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,8 +31,6 @@ jobs:
       - name: Build with Buildozer
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          # Limpeza preventiva de arquivos que podem travar o Gradle
-          rm -rf .buildozer/android/platform/build-arm64-v8a/dists
           # Aceita licenças e inicia o build
           yes | buildozer android debug
         env:
