@@ -121,7 +121,7 @@ class TelaCadastro(MDScreen):
         cliente_id = str(uuid.uuid4())
         app.cliente = {'id': cliente_id, 'nome': nome}
 
-        with open(app.CLIENTE_FILE, 'w', encoding='utf-8') as f:
+        with open(app.cliente_file, 'w', encoding='utf-8') as f:
             json.dump(app.cliente, f, ensure_ascii=False, indent=2)
 
         # Zera dados locais de qualquer cliente anterior

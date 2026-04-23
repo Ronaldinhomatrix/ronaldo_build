@@ -43,23 +43,33 @@ SYNC_FILE          = os.path.join(DATA_DIR, 'ultima_sync.json')
 
 class RonaldoMedeirosFisiologistaApp(MDApp):
 
-    CLIENTE_FILE = CLIENTE_FILE   # acessível de tela_cadastro
-
     def build(self):
         self.title = 'Ronaldo Medeiros Fisiologista'
         self.theme_cls.primary_palette = 'BlueGray'
         self.theme_cls.theme_style = 'Dark'
         self.theme_cls.primary_hue = '500'
 
-        os.makedirs(DATA_DIR, exist_ok=True)
+        # No Android, usamos user_data_dir para ter permissão de escrita
+        self.data_dir = self.user_data_dir
+        os.makedirs(self.data_dir, exist_ok=True)
+        
+        # Caminhos dos arquivos de dados
+        self.treinos_file       = os.path.join(self.data_dir, 'treinos.json')
+        self.treinos_nomes_file = os.path.join(self.data_dir, 'treinos_nomes.json')
+        self.historico_file     = os.path.join(self.data_dir, 'historico.json')
+        self.atividade_file     = os.path.join(self.data_dir, 'historico_atividade.json')
+        self.cliente_file       = os.path.join(self.data_dir, 'cliente.json')
+        self.sync_file          = os.path.join(self.data_dir, 'ultima_sync.json')
+
         self.pode_editar      = True
         self.treino_atual     = ''
         self.progresso_treino = {}
-        self.cliente       = self._carregar(CLIENTE_FILE, None) or self._recuperar_cliente_downloads()
-        self.treinos       = self._carregar(TREINOS_FILE,       {})
-        self.treinos_nomes = self._carregar(TREINOS_NOMES_FILE, {})
-        self.historico     = self._carregar(HISTORICO_FILE,     {})
-        self.atividade     = self._carregar(ATIVIDADE_FILE,     [])
+        
+        self.cliente       = self._carregar(self.cliente_file, None) or self._recuperar_cliente_downloads()
+        self.treinos       = self._carregar(self.treinos_file,       {})
+        self.treinos_nomes = self._carregar(self.treinos_nomes_file, {})
+        self.historico     = self._carregar(self.historico_file,     {})
+        self.atividade     = self._carregar(self.atividade_file,     [])
         from telas.tela_cadastro import TelaCadastro
         from telas.tela_home import TelaHome
         from telas.tela_treino import TelaTreino
@@ -121,17 +131,17 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             return None
         # Restaura cliente.json
         cliente = {'id': dados['id'], 'nome': dados['nome']}
-        with open(CLIENTE_FILE, 'w', encoding='utf-8') as f:
+        with open(self.cliente_file, 'w', encoding='utf-8') as f:
             json.dump(cliente, f, ensure_ascii=False, indent=2)
         # Restaura treinos, nomes e histórico se presentes no backup
         if dados.get('treinos'):
-            with open(TREINOS_FILE, 'w', encoding='utf-8') as f:
+            with open(self.treinos_file, 'w', encoding='utf-8') as f:
                 json.dump(dados['treinos'], f, ensure_ascii=False, indent=2)
         if dados.get('treinos_nomes'):
-            with open(TREINOS_NOMES_FILE, 'w', encoding='utf-8') as f:
+            with open(self.treinos_nomes_file, 'w', encoding='utf-8') as f:
                 json.dump(dados['treinos_nomes'], f, ensure_ascii=False, indent=2)
         if dados.get('historico'):
-            with open(HISTORICO_FILE, 'w', encoding='utf-8') as f:
+            with open(self.historico_file, 'w', encoding='utf-8') as f:
                 json.dump(dados['historico'], f, ensure_ascii=False, indent=2)
         print('[Recuperação] Dados restaurados da Downloads.')
         return cliente
@@ -157,12 +167,12 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                     'peso':         ex.get('peso', ''),
                     'concluido':    True,
                 })
-            with open(ATIVIDADE_FILE, 'w', encoding='utf-8') as f:
+            with open(self.atividade_file, 'w', encoding='utf-8') as f:
                 json.dump(self.atividade, f, ensure_ascii=False, indent=2)
 
-        with open(TREINOS_FILE, 'w', encoding='utf-8') as f:
+        with open(self.treinos_file, 'w', encoding='utf-8') as f:
             json.dump(self.treinos, f, ensure_ascii=False, indent=2)
-        with open(HISTORICO_FILE, 'w', encoding='utf-8') as f:
+        with open(self.historico_file, 'w', encoding='utf-8') as f:
             json.dump(self.historico, f, ensure_ascii=False, indent=2)
         # Mantém backup na Downloads atualizado com os treinos mais recentes
         if self.cliente:
@@ -189,10 +199,10 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
 
     def recarregar_dados(self):
         """Relê os arquivos de dados do disco para a memória."""
-        self.treinos       = self._carregar(TREINOS_FILE,       {'A': [], 'B': [], 'C': []})
-        self.treinos_nomes = self._carregar(TREINOS_NOMES_FILE, {})
-        self.historico     = self._carregar(HISTORICO_FILE,     {})
-        self.atividade     = self._carregar(ATIVIDADE_FILE,     [])
+        self.treinos       = self._carregar(self.treinos_file,       {'A': [], 'B': [], 'C': []})
+        self.treinos_nomes = self._carregar(self.treinos_nomes_file, {})
+        self.historico     = self._carregar(self.historico_file,     {})
+        self.atividade     = self._carregar(self.atividade_file,     [])
 
     # ── Firebase: puxar mudanças do treinador ────────────────────────────────
 
@@ -228,11 +238,11 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                 ex['obs'] = obs_cliente.get(ex.get('id', ''), "")
 
         self.treinos = novos_treinos
-        with open(TREINOS_FILE, 'w', encoding='utf-8') as f:
+        with open(self.treinos_file, 'w', encoding='utf-8') as f:
             json.dump(self.treinos, f, ensure_ascii=False, indent=2)
         if novos_nomes is not None:
             self.treinos_nomes = novos_nomes
-            with open(TREINOS_NOMES_FILE, 'w', encoding='utf-8') as f:
+            with open(self.treinos_nomes_file, 'w', encoding='utf-8') as f:
                 json.dump(self.treinos_nomes, f, ensure_ascii=False, indent=2)
         firebase_sync.marcar_trainer_lido(self.cliente['id'])
         # Atualiza backup na Downloads com os treinos recebidos do treinador
