@@ -10,12 +10,20 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf automake libtool pkg-config cmake patch libffi-dev libssl-dev
+          # Lista completa de dependências para Kivy + Vídeo (FFmpeg/FFpyplayer)
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk python3-pip autoconf automake libtool \
+            pkg-config cmake patch libffi-dev libssl-dev libltdl-dev libgmp-dev \
+            libsqlite3-dev zlib1g-dev libncurses5-dev libncursesw5-dev \
+            libbz2-dev libreadline-dev libgdbm-dev libdb5.3-dev libexpat1-dev \
+            liblzma-dev uuid-dev
+          
           pip3 install --user --upgrade buildozer "cython<3.0"
 
       - name: Build with Buildozer
         run: |
           export PATH=$PATH:$HOME/.local/bin
+          # Aceita licenças e inicia o build em modo debug para diagnóstico
           yes | buildozer android debug
         env:
           BUILDOZER_ALLOW_ORG_NAME_START_WITH_DIGIT: 1
