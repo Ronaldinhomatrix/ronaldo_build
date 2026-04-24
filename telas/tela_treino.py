@@ -1,5 +1,6 @@
 import os
 import unicodedata
+import platform
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -20,7 +21,6 @@ from kivymd.uix.toolbar import MDTopAppBar
 
 COR_CONCLUIDO = get_color_from_hex('#2ECC71')
 COR_ACCENT    = get_color_from_hex('#3498DB')
-COR_OBS       = get_color_from_hex('#F1C40F')
 COR_PENDENTE  = get_color_from_hex('#3D3D3D')
 
 
@@ -48,7 +48,6 @@ class CardExercicio(MDCard):
         )
         self.ex = ex
         self.tela = tela
-        app = MDApp.get_running_app()
         self._feito = False
         self._cor_pendente = COR_PENDENTE
         self._tem_video = os.path.exists(self._caminho_video(ex.get('nome', '')))
@@ -95,7 +94,6 @@ class CardExercicio(MDCard):
 class TelaTreino(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._cards = []
         self._build()
 
     def _build(self):
@@ -123,10 +121,8 @@ class TelaTreino(MDScreen):
         app = MDApp.get_running_app()
         self.toolbar.title = f"Treino {treino}"
         self.lista.clear_widgets()
-        self._cards = []
         for ex in app.treinos.get(treino, []):
             card = CardExercicio(ex, self)
-            self._cards.append(card)
             self.lista.add_widget(card)
 
     def _verificar_conclusao(self):
@@ -134,39 +130,44 @@ class TelaTreino(MDScreen):
 
     def _concluir(self):
         app = MDApp.get_running_app()
-        exercicios = [c.ex for c in self._cards]
+        exercicios = [c.ex for c in self.lista.children if isinstance(c, CardExercicio)]
         app.salvar(treino=self.treino_atual, exercicios_concluidos=exercicios)
         self._voltar()
 
     def _ver_midia(self, ex):
         try:
-            from kivy.uix.videoplayer import VideoPlayer
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            if not os.path.exists(caminho):
-                raise Exception("Vídeo não encontrado.")
-
-            # CONFIGURAÇÃO PROFISSIONAL PARA CELULAR (Vertical):
-            # allow_stretch=True + keep_ratio=True: Garante que o vídeo cresça sem se deformar.
-            player = VideoPlayer(
-                source=caminho, 
-                state='play',
-                allow_stretch=True,
-                options={'eos': 'loop', 'keep_ratio': True}
-            )
+            # NO ANDROID: Usa o Intent do Sistema para abrir o vídeo com o Player Nativo
+            if platform.system() == 'Android':
+                from jnius import autoclass, cast
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                Intent = autoclass('android.content.Intent')
+                Uri = autoclass('android.net.Uri')
+                File = autoclass('java.io.File')
+                
+                file_path = File(caminho)
+                uri = Uri.fromFile(file_path)
+                
+                intent = Intent(Intent.ACTION_VIEW)
+                intent.setDataAndType(uri, "video/mp4")
+                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                
+                currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
+                currentActivity.startActivity(intent)
             
-            # Popup vertical gigante para ocupar 90% da altura da tela
-            popup = Popup(
-                title=ex['nome'], 
-                content=player, 
-                size_hint=(0.9, 0.9)
-            )
-            popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
-            popup.open()
+            # NO IOS: O Kivy usará o AVPlayer Nativo automaticamente no VideoPlayer
+            else:
+                from kivy.uix.videoplayer import VideoPlayer
+                player = VideoPlayer(source=caminho, state='play', options={'eos': 'loop', 'keep_ratio': True})
+                popup = Popup(title=ex['nome'], content=player, size_hint=(0.9, 0.9))
+                popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
+                popup.open()
+                
         except Exception as e:
             self.dialog = MDDialog(
-                title="Vídeo Indisponível",
-                text="Ocorreu um erro ao reproduzir o vídeo neste dispositivo.",
+                title="Vídeo Nativo",
+                text=f"Não foi possível abrir o player do sistema.\nErro: {str(e)}",
                 buttons=[MDRaisedButton(text="OK", on_release=lambda x: self.dialog.dismiss())]
             )
             self.dialog.open()

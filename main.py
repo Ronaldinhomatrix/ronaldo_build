@@ -6,10 +6,10 @@ import uuid
 from datetime import datetime
 
 # 1. Configurações de Ambiente
-# Removido KIVY_VIDEO=ffpyplayer para usar o motor nativo do sistema
 if platform.system() == 'Windows':
     os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
+# Motor de vídeo removido para usar o nativo do Android/iOS automaticamente
 from kivy.clock import Clock
 from kivy.core.text import LabelBase
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
@@ -53,14 +53,13 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.treino_atual     = ''
             self.progresso_treino = {}
             
-            # Carregamento de dados
+            # Carregamento resiliente
             self.cliente       = self._carregar(self.cliente_file, None) or self._recuperar_cliente_downloads()
             self.treinos       = self._carregar(self.treinos_file,       {})
             self.treinos_nomes = self._carregar(self.treinos_nomes_file, {})
             self.historico     = self._carregar(self.historico_file,     {})
             self.atividade     = self._carregar(self.atividade_file,     [])
 
-            # Importação das telas
             from telas.tela_cadastro import TelaCadastro
             from telas.tela_home import TelaHome
             from telas.tela_treino import TelaTreino
@@ -111,7 +110,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         return None
 
     def salvar(self, treino=None, exercicios_concluidos=None):
-        """Salva dados e atividade. Se informar treino+ex, registra conclusão."""
         agora = datetime.now()
         data_str = agora.strftime('%d/%m/%Y')
         hora_str = agora.strftime('%H:%M:%S')
