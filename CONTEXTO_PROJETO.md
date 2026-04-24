@@ -88,13 +88,13 @@ O script faz automaticamente:
 3. Cria a keystore de assinatura em `/mnt/c/Users/madm/keystore/ronaldo.jks` (apenas na 1ª vez)
 4. Compila com `buildozer android release`
 5. Assina o APK com `zipalign` + `apksigner`
-6. Copia o APK final para `C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.8.apk`
+6. Copia o APK final para `C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.9.apk`
 
 **Tempo de build:**
 - 1ª build (sem cache): 30–60 min
 - Builds subsequentes: 2–5 min
 
-**Versão atual:** 2.8 (definida em `buildozer.spec` → `version = 2.8`)
+**Versão atual:** 2.9 (definida em `buildozer.spec` → `version = 2.9`, agora com target API 34 para Play Store)
 
 **Keystore (assinatura):**
 - Arquivo: `C:\Users\madm\keystore\ronaldo.jks`
@@ -228,8 +228,8 @@ O `CardExercicio` em `tela_treino.py` tem fallback para esse caso.
 ## 9. Tarefas comuns
 
 ### Mudar versão do app
-1. `buildozer.spec` → linha `version = 2.8` → incrementar
-2. `build_android.sh` → linha `cp "$SIGNED" ... v2.8.apk"` → atualizar nome do arquivo
+1. `buildozer.spec` → linha `version = 2.9` → incrementar
+2. `build_android.sh` → linha `cp "$SIGNED" ... v2.9.apk"` → atualizar nome do arquivo
 
 ### Adicionar um campo novo ao exercício (ex: "observação do treinador")
 1. No painel (`painel/app.py`): adicionar o campo ao formulário e salvar no Firestore
@@ -276,9 +276,9 @@ O painel web roda no Render e precisa destas variáveis de ambiente configuradas
 | `marcosalexandredemedeiros-glitch/ronaldo-medeiros-fisiologista` | Privado | Código-fonte do app e painel |
 | `marcosalexandredemedeiros-glitch/ronaldo-medeiros-fisiologista-videos` | Público | 52 vídeos MP4 + release do APK |
 
-**Link de download do APK (v2.8):**
+**Link de download do APK (v2.9):**
 ```
-https://github.com/marcosalexandredemedeiros-glitch/ronaldo-medeiros-fisiologista-videos/releases/download/v2.8/RonaldoMedeirosFisiologista_v2.8.apk
+https://github.com/marcosalexandredemedeiros-glitch/ronaldo-medeiros-fisiologista-videos/releases/download/v2.9/RonaldoMedeirosFisiologista_v2.9.apk
 ```
 
 ---

@@ -113,7 +113,7 @@ rm -f "$ALIGNED"
 echo "Verificando assinatura..."
 "$APKSIGNER" verify --verbose "$SIGNED" | grep -E "Verified|error" || true
 
-cp "$SIGNED" "$PROJETO_WIN/Instalador/RonaldoMedeirosFisiologista_v2.8.apk"
-echo "APK assinado copiado para: C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.8.apk"
+cp "$SIGNED" "$PROJETO_WIN/Instalador/RonaldoMedeirosFisiologista_v2.9.apk"
+echo "APK assinado copiado para: C:\Users\madm\ronaldo_build\Instalador\RonaldoMedeirosFisiologista_v2.9.apk"
 
 echo "=== Build concluido com sucesso! ==="
