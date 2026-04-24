@@ -1,22 +1,23 @@
-import json
 import os
 import platform
+import json
 import threading
 import uuid
 from datetime import datetime
 
-# 1. Configurações de Ambiente
+# Configurações de Ambiente
 if platform.system() == 'Windows':
     os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
-# Motor de vídeo removido para usar o nativo do Android/iOS automaticamente
+# Motor de vídeo automático (Kivy escolherá o melhor nativo no Android/iOS)
+from kivy.config import Config
+Config.set('graphics', 'multisamples', '0')
+
 from kivy.clock import Clock
 from kivy.core.text import LabelBase
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
 from kivymd.app import MDApp
 from kivy.uix.label import Label
-
-import firebase_sync
 
 def _pasta_downloads():
     if platform.system() == 'Android':
@@ -30,10 +31,11 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.theme_cls.primary_palette = 'BlueGray'
             self.theme_cls.theme_style = 'Dark'
 
-            # Pasta de dados segura
+            # Define o diretório de dados apenas quando o app está pronto
             self.data_dir = self.user_data_dir
             os.makedirs(self.data_dir, exist_ok=True)
             
+            # Inicializa caminhos
             self.treinos_file       = os.path.join(self.data_dir, 'treinos.json')
             self.treinos_nomes_file = os.path.join(self.data_dir, 'treinos_nomes.json')
             self.historico_file     = os.path.join(self.data_dir, 'historico.json')
@@ -42,7 +44,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.sync_file          = os.path.join(self.data_dir, 'ultima_sync.json')
             self._CLIENTE_BACKUP    = os.path.join(_pasta_downloads(), 'ronaldo_cliente_backup.json')
 
-            # Registro de Fonte
+            # Registro de Fonte (Silencioso se falhar)
             try:
                 font_path = os.path.join(os.path.dirname(__file__), 'assets', 'fonts', 'ERASBD.TTF')
                 if os.path.exists(font_path):
@@ -53,13 +55,14 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.treino_atual     = ''
             self.progresso_treino = {}
             
-            # Carregamento resiliente
+            # Carregamento de dados (Seguro)
             self.cliente       = self._carregar(self.cliente_file, None) or self._recuperar_cliente_downloads()
             self.treinos       = self._carregar(self.treinos_file,       {})
             self.treinos_nomes = self._carregar(self.treinos_nomes_file, {})
             self.historico     = self._carregar(self.historico_file,     {})
             self.atividade     = self._carregar(self.atividade_file,     [])
 
+            # Importação tardia das telas para evitar crash no loading pesado
             from telas.tela_cadastro import TelaCadastro
             from telas.tela_home import TelaHome
             from telas.tela_treino import TelaTreino
@@ -75,6 +78,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.sm.add_widget(TelaHistorico(name='historico'))
             self.sm.add_widget(TelaAtividade(name='atividade'))
 
+            # Decisão de tela inicial
             if not videos_prontos():
                 self.sm.current = 'download'
             elif self.cliente:
@@ -83,11 +87,14 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                 self.sm.current = 'cadastro'
                 
             return self.sm
+
         except Exception as e:
-            return Label(text=f"Erro ao iniciar:\n{e}")
+            # Em caso de erro grave, mostra uma tela branca com o erro
+            return Label(text=f"Erro de Inicializacao:\n{str(e)}", color=(1,0,0,1))
 
     def on_start(self):
-        if self.cliente:
+        if hasattr(self, 'cliente') and self.cliente:
+            import firebase_sync
             threading.Thread(target=self._puxar_treinos_firebase, daemon=True).start()
 
     def _carregar(self, path, default):
@@ -138,6 +145,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                 json.dump(self.historico, f, ensure_ascii=False, indent=2)
             
             if self.cliente:
+                import firebase_sync
                 threading.Thread(target=firebase_sync.salvar_dados, 
                                args=(self.cliente['id'], self.historico, self.atividade), 
                                daemon=True).start()
@@ -145,6 +153,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
 
     def _puxar_treinos_firebase(self):
         try:
+            import firebase_sync
             dados = firebase_sync.buscar_cliente_completo(self.cliente['id'])
             if dados and (dados.get('trainer_editou') or not self.treinos):
                 self.treinos = dados['treinos']
