@@ -55,16 +55,17 @@ class TelaCadastro(MDScreen):
             height=dp(30),
         ))
         
-        # Nome Ronaldo Medeiros como o MAIOR destaque absoluto
-        cabecalho.add_widget(MDLabel(
+        # Usamos Label puro do Kivy para garantir que o tamanho 56sp seja respeitado sem encolhimento
+        from kivy.uix.label import Label
+        cabecalho.add_widget(Label(
             text='Ronaldo Medeiros',
             halign='center',
-            font_name='ErasBoldITC', # Usa sua fonte personalizada registrada no main.py
-            font_size='56sp',        # Tamanho massivo
+            font_name='ErasBoldITC',
+            font_size='56sp',
             bold=True,
-            theme_text_color='Primary',
+            color=(1, 1, 1, 1), # Branco
             size_hint_y=None,
-            height=dp(90),           # Caixa maior para não encolher o texto
+            height=dp(100), # Aumentado para dar folga à letra gigante
         ))
         
         cabecalho.add_widget(MDLabel(

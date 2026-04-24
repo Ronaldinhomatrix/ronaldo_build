@@ -144,27 +144,29 @@ class TelaTreino(MDScreen):
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
             if not os.path.exists(caminho):
-                raise FileNotFoundError(f"Arquivo não encontrado: {caminho}")
+                raise Exception("Vídeo não encontrado.")
 
-            # Ajuste de Proporção: keep_ratio garante que o vídeo vertical não seja esmagado
+            # CONFIGURAÇÃO PROFISSIONAL PARA CELULAR (Vertical):
+            # allow_stretch=True + keep_ratio=True: Garante que o vídeo cresça sem se deformar.
             player = VideoPlayer(
                 source=caminho, 
-                state='play', 
-                options={'allow_stretch': True, 'keep_ratio': True}
+                state='play',
+                allow_stretch=True,
+                options={'eos': 'loop', 'keep_ratio': True}
             )
             
-            # Popup em formato vertical (ideal para demonstração de exercícios)
+            # Popup vertical gigante para ocupar 90% da altura da tela
             popup = Popup(
                 title=ex['nome'], 
                 content=player, 
-                size_hint=(0.8, 0.9) # Mais alto e estreito
+                size_hint=(0.9, 0.9)
             )
             popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
             popup.open()
         except Exception as e:
             self.dialog = MDDialog(
-                title="Erro de Vídeo",
-                text=f"Não foi possível abrir o vídeo.\nErro: {str(e)}",
+                title="Vídeo Indisponível",
+                text="Ocorreu um erro ao reproduzir o vídeo neste dispositivo.",
                 buttons=[MDRaisedButton(text="OK", on_release=lambda x: self.dialog.dismiss())]
             )
             self.dialog.open()

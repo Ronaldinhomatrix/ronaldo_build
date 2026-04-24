@@ -8,8 +8,8 @@ source.exclude_dirs = p4a_recipes,painel,.git,bin
 icon.filename = %(source.dir)s/icon_rm.png
 version = 1.2
 
-# Removido ffpyplayer/ffmpeg para usar o motor nativo (mais leve e estável)
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,urllib3,android,pyasn1,idna,charset-normalizer
+# ffpyplayer é essencial para o Kivy ter motor de vídeo no Android
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,urllib3,android,pyasn1,idna,charset-normalizer,ffpyplayer
 
 orientation = portrait
 fullscreen = 0
