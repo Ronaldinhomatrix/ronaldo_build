@@ -72,6 +72,42 @@ def _get(path):
         return json.loads(resp.read())
 
 
+def buscar_id_por_nome(nome):
+    """
+    Pesquisa no Firestore se já existe um atleta com este nome.
+    Retorna o ID do documento se encontrar, ou None se for novo.
+    """
+    try:
+        # Query via REST API
+        url = f'https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents:runQuery?key={API_KEY}'
+        query = {
+            "structuredQuery": {
+                "from": [{"collectionId": "atletas"}],
+                "where": {
+                    "fieldFilter": {
+                        "field": {"fieldPath": "nome"},
+                        "op": "EQUAL",
+                        "value": {"stringValue": nome}
+                    }
+                },
+                "limit": 1
+            }
+        }
+        body = json.dumps(query).encode('utf-8')
+        req = urllib.request.Request(url, data=body, method='POST')
+        req.add_header('Content-Type', 'application/json')
+        
+        with urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT) as resp:
+            resultados = json.loads(resp.read())
+            # O Firestore retorna uma lista. Se o primeiro item tiver um 'document', ele existe.
+            if resultados and 'document' in resultados[0]:
+                path = resultados[0]['document']['name']
+                return path.split('/')[-1] # Retorna apenas o ID (final do caminho)
+    except Exception as e:
+        print(f'[Firebase] Erro ao buscar por nome: {e}')
+    return None
+
+
 # ── API pública ───────────────────────────────────────────────────────────────
 
 def criar_cliente(cliente_id, nome):
