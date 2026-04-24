@@ -136,33 +136,45 @@ class TelaCadastro(MDScreen):
         if cliente_id_existente:
             cliente_id = cliente_id_existente
             print(f"[Cadastro] Cliente encontrado! Usando ID: {cliente_id}")
+            
+            # BUSCA OS DADOS REAIS DO FIREBASE PARA EVITAR APP VAZIO
+            dados = firebase_sync.buscar_cliente_completo(cliente_id)
+            if dados:
+                app.treinos = dados.get('treinos', {})
+                app.treinos_nomes = dados.get('treinos_nomes', {})
+                app.treino_atual = dados.get('treino_atual', '')
         else:
             cliente_id = str(uuid.uuid4())
+            app.treinos = {}
+            app.treinos_nomes = {}
             print(f"[Cadastro] Novo cliente. Gerado ID: {cliente_id}")
 
         # 2. Atualiza o objeto do app
         app.cliente = {'id': cliente_id, 'nome': nome}
 
-        # 3. Salva os arquivos locais
+        # 3. Salva os arquivos locais (Agora com os dados recuperados se existirem)
         try:
             with open(app.cliente_file, 'w', encoding='utf-8') as f:
                 json.dump(app.cliente, f, ensure_ascii=False, indent=2)
 
-            # Prepara arquivos de dados se não existirem
-            app.treinos   = {}
-            app.historico = {}
-            app.atividade = []
-            
             with open(app.treinos_file, 'w', encoding='utf-8') as f:
                 json.dump(app.treinos, f, ensure_ascii=False, indent=2)
-            with open(app.historico_file, 'w', encoding='utf-8') as f:
-                json.dump(app.historico, f, ensure_ascii=False, indent=2)
-            with open(app.atividade_file, 'w', encoding='utf-8') as f:
-                json.dump(app.atividade, f, ensure_ascii=False, indent=2)
+            
+            with open(app.treinos_nomes_file, 'w', encoding='utf-8') as f:
+                json.dump(app.treinos_nomes, f, ensure_ascii=False, indent=2)
+
+            # Histórico e atividade iniciam vazios ou você pode expandir para recuperar também
+            if not cliente_id_existente:
+                app.historico = {}
+                app.atividade = []
+                with open(app.historico_file, 'w', encoding='utf-8') as f:
+                    json.dump(app.historico, f, ensure_ascii=False, indent=2)
+                with open(app.atividade_file, 'w', encoding='utf-8') as f:
+                    json.dump(app.atividade, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"Erro ao salvar arquivos iniciais: {e}")
 
-        # 4. Se for novo, cria no Firestore. Se for antigo, apenas garante que os dados estão lá.
+        # 4. Se for novo, cria no Firestore.
         if not cliente_id_existente:
             firebase_sync.criar_cliente(cliente_id, nome)
 
