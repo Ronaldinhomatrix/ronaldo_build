@@ -55,14 +55,16 @@ class TelaCadastro(MDScreen):
             height=dp(30),
         ))
         
-        # Nome Ronaldo Medeiros como o MAIOR destaque
+        # Nome Ronaldo Medeiros como o MAIOR destaque absoluto
         cabecalho.add_widget(MDLabel(
             text='Ronaldo Medeiros',
             halign='center',
-            font_style='H3', # Estilo gigante nativo
+            font_name='ErasBoldITC', # Usa sua fonte personalizada registrada no main.py
+            font_size='56sp',        # Tamanho massivo
             bold=True,
+            theme_text_color='Primary',
             size_hint_y=None,
-            height=dp(70),
+            height=dp(90),           # Caixa maior para não encolher o texto
         ))
         
         cabecalho.add_widget(MDLabel(

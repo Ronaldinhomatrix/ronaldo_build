@@ -146,8 +146,19 @@ class TelaTreino(MDScreen):
             if not os.path.exists(caminho):
                 raise FileNotFoundError(f"Arquivo não encontrado: {caminho}")
 
-            player = VideoPlayer(source=caminho, state='play', options={'allow_stretch': True})
-            popup = Popup(title=ex['nome'], content=player, size_hint=(0.9, 0.6))
+            # Ajuste de Proporção: keep_ratio garante que o vídeo vertical não seja esmagado
+            player = VideoPlayer(
+                source=caminho, 
+                state='play', 
+                options={'allow_stretch': True, 'keep_ratio': True}
+            )
+            
+            # Popup em formato vertical (ideal para demonstração de exercícios)
+            popup = Popup(
+                title=ex['nome'], 
+                content=player, 
+                size_hint=(0.8, 0.9) # Mais alto e estreito
+            )
             popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
             popup.open()
         except Exception as e:
