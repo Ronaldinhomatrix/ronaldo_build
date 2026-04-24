@@ -24,7 +24,9 @@ jobs:
             pkg-config cmake patch libffi-dev libssl-dev libltdl-dev \
             libgmp-dev libsqlite3-dev zlib1g-dev libncurses5-dev \
             libncursesw5-dev libbz2-dev libreadline-dev libgdbm-dev \
-            libexpat1-dev liblzma-dev uuid-dev
+            libexpat1-dev liblzma-dev uuid-dev libmpc-dev libmpfr-dev \
+            libavcodec-dev libavformat-dev libswscale-dev libavdevice-dev \
+            libavfilter-dev libpostproc-dev libswresample-dev
           
           pip3 install --user --upgrade buildozer "cython<3.0"
 

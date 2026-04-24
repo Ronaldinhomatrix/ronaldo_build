@@ -169,25 +169,25 @@ class TelaHome(MDScreen):
         lbl_nome = MDLabel(
             text='Ronaldo Medeiros',
             halign='center',
-            font_style='H4',
+            font_style='H3', # Aumentado de H4 para H3
             bold=True,
             size_hint_y=None,
         )
         # Ajuste dinâmico de altura para o nome
         lbl_nome.bind(
             width=lambda inst, w: setattr(inst, 'text_size', (w, None)),
-            texture_size=lambda inst, ts: setattr(inst, 'height', max(dp(48), ts[1])),
+            texture_size=lambda inst, ts: setattr(inst, 'height', max(dp(64), ts[1])),
         )
         header.add_widget(lbl_nome)
 
         header.add_widget(MDLabel(
             text='Fisiologista',
             halign='center',
-            font_style='Button',
+            font_style='H5', # Aumentado de Button para H5
             theme_text_color='Custom',
             text_color=get_color_from_hex('#5DADE2'),
             size_hint_y=None,
-            height=dp(24),
+            height=dp(32),
         ))
         content.add_widget(header)
 
@@ -195,7 +195,7 @@ class TelaHome(MDScreen):
         welcome_card = MDCard(
             orientation='vertical',
             size_hint=(1, None),
-            height=dp(100),
+            height=dp(120), # Aumentado de 100 para 120
             padding=dp(16),
             radius=[dp(15)],
             md_bg_color=get_color_from_hex('#34495E'), # Azul Marinho Escuro
@@ -205,18 +205,18 @@ class TelaHome(MDScreen):
         self._lbl_saudacao = MDLabel(
             text='Olá!',
             halign='center',
-            font_style='H6',
+            font_style='H5', # Aumentado de H6 para H5
             theme_text_color='Custom',
             text_color=(1, 1, 1, 1),
             size_hint_y=None,
-            height=dp(30),
+            height=dp(40),
         )
         welcome_card.add_widget(self._lbl_saudacao)
         
         self._lbl_motivacional = MDLabel(
             text='“O movimento é a cura.”',
             halign='center',
-            font_style='Caption',
+            font_style='Subtitle1', # Aumentado de Caption para Subtitle1
             italic=True,
             theme_text_color='Custom',
             text_color=(0.9, 0.9, 0.9, 1),
@@ -228,10 +228,10 @@ class TelaHome(MDScreen):
         content.add_widget(MDLabel(
             text='Qual o nosso treino de hoje?',
             halign='center',
-            font_style='Subtitle2',
+            font_style='H6', # Aumentado de Subtitle2 para H6
             theme_text_color='Secondary',
             size_hint_y=None,
-            height=dp(40),
+            height=dp(50),
         ))
 
         # Container dinâmico dos botões

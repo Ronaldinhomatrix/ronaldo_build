@@ -115,21 +115,45 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         except: pass
         return None
 
-    def salvar(self, **kwargs):
-        # Salva em background para não travar a UI
-        threading.Thread(target=self._executar_salvamento, kwargs=kwargs, daemon=True).start()
+    def salvar(self, treino=None, exercicios_concluidos=None):
+        """Salva dados e atividade. Se informar treino+ex, registra conclusão."""
+        agora = datetime.now()
+        data_str = agora.strftime('%d/%m/%Y')
+        hora_str = agora.strftime('%H:%M:%S')
 
-    def _executar_salvamento(self, **kwargs):
+        if treino and exercicios_concluidos:
+            # Importante: Garantir que todos os campos necessários para a TelaHome estão aqui
+            for ex in exercicios_concluidos:
+                registro = {
+                    'data':         data_str,
+                    'hora':         hora_str,
+                    'treino':       treino,
+                    'ex_id':        ex['id'],
+                    'nome':         ex['nome'],
+                    'series_total': ex.get('series', ''),
+                    'peso':         ex.get('peso', ''),
+                    'concluido':    True,
+                }
+                self.atividade.append(registro)
+            
+            try:
+                with open(self.atividade_file, 'w', encoding='utf-8') as f:
+                    json.dump(self.atividade, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"Erro ao salvar atividade: {e}")
+
         try:
             with open(self.treinos_file, 'w', encoding='utf-8') as f:
-                json.dump(self.treinos, f)
+                json.dump(self.treinos, f, ensure_ascii=False, indent=2)
             with open(self.historico_file, 'w', encoding='utf-8') as f:
-                json.dump(self.historico, f)
-            with open(self.atividade_file, 'w', encoding='utf-8') as f:
-                json.dump(self.atividade, f)
+                json.dump(self.historico, f, ensure_ascii=False, indent=2)
+            
             if self.cliente:
-                firebase_sync.salvar_dados(self.cliente['id'], self.historico, self.atividade)
-        except: pass
+                threading.Thread(target=firebase_sync.salvar_dados, 
+                               args=(self.cliente['id'], self.historico, self.atividade), 
+                               daemon=True).start()
+        except Exception as e:
+            print(f"Erro ao salvar treinos/hist: {e}")
 
     def _puxar_treinos_firebase(self):
         try:

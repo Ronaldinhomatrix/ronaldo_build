@@ -11,15 +11,18 @@ version = 1.1
 # Requisitos expandidos para garantir que o Firebase e o KivyMD não crasham
 requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,ffpyplayer,ffmpeg,openssl,sqlite3,requests,urllib3,android,pyasn1,idna,charset-normalizer
 
+# (str) Custom source for ffpyplayer
+# p4a.local_recipes = ./p4a_recipes
+
 orientation = portrait
 fullscreen = 0
 android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,READ_MEDIA_VIDEO
 android.release_artifact = apk
 
-android.api = 31
+android.api = 33
 android.minapi = 21
 android.ndk = 25b
-android.archs = armeabi-v7a, arm64-v8a
+android.archs = arm64-v8a, armeabi-v7a
 android.accept_sdk_license = True
 
 [buildozer]
