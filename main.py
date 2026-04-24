@@ -6,9 +6,6 @@ import uuid
 from datetime import datetime
 
 # Configurações de Ambiente
-if platform.system() == 'Android':
-    os.environ['KIVY_VIDEO'] = 'ffpyplayer'
-
 if platform.system() == 'Windows':
     os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 

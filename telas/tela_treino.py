@@ -54,14 +54,19 @@ class CardExercicio(MDCard):
         self._build()
 
     def _build(self):
-        # Borda lateral decorativa
-        borda = MDBoxLayout(size_hint=(None, 1), width=dp(4), md_bg_color=COR_ACCENT)
-        self.add_widget(borda)
+        # Borda lateral azul
+        self.add_widget(MDBoxLayout(size_hint=(None, 1), width=dp(4), md_bg_color=COR_ACCENT))
 
-        # Conteúdo do Card (Ajustado para não espremer)
-        conteudo = MDBoxLayout(orientation='vertical', size_hint=(1, None), padding=dp(15), spacing=dp(10))
+        # Conteúdo do Card (adaptive_height impede que o card fique espremido)
+        conteudo = MDBoxLayout(
+            orientation='vertical', 
+            size_hint=(1, None), 
+            adaptive_height=True, 
+            padding=dp(15), 
+            spacing=dp(10)
+        )
         
-        # Garante que o Card cresça de acordo com o texto interno
+        # O Card deve seguir a altura do conteúdo
         conteudo.bind(minimum_height=self.setter('height'))
 
         linha1 = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(45))
@@ -75,9 +80,11 @@ class CardExercicio(MDCard):
             ))
         conteudo.add_widget(linha1)
 
+        # Informações de Séries e Peso
         info = f"Séries: {self.ex.get('series','')}  •  Peso: {self.ex.get('peso','')}kg"
         conteudo.add_widget(MDLabel(text=info, font_style='Body1', theme_text_color='Secondary', size_hint_y=None, height=dp(30)))
 
+        # Botão Feito
         self._btn_feito = MDRaisedButton(
             text='Feito',
             size_hint=(1, None),
@@ -144,10 +151,11 @@ class TelaTreino(MDScreen):
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
             if not os.path.exists(caminho):
-                raise Exception("Vídeo não encontrado.")
+                raise Exception("Arquivo de vídeo não encontrado.")
 
-            # keep_ratio: True impede que o vídeo seja esmagado
-            # allow_stretch: True permite que ele ocupe o espaço disponível
+            # CONFIGURAÇÃO DE ALTA PERFORMANCE (H.265 Nativo)
+            # keep_ratio: True impede a distorção do vídeo vertical.
+            # allow_stretch: True permite que o vídeo ocupe a altura disponível.
             player = VideoPlayer(
                 source=caminho, 
                 state='play',
@@ -158,7 +166,7 @@ class TelaTreino(MDScreen):
             popup = Popup(
                 title=ex['nome'], 
                 content=player, 
-                size_hint=(0.9, 0.9)
+                size_hint=(0.9, 0.9) # Popup grande ocupando quase toda a tela
             )
             popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
             popup.open()
@@ -166,7 +174,7 @@ class TelaTreino(MDScreen):
         except Exception as e:
             self.dialog = MDDialog(
                 title="Vídeo",
-                text=f"Não foi possível abrir o vídeo.\n{str(e)}",
+                text=f"Erro ao abrir vídeo: {str(e)}",
                 buttons=[MDRaisedButton(text="OK", on_release=lambda x: self.dialog.dismiss())]
             )
             self.dialog.open()
