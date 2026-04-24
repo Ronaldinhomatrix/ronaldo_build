@@ -6,12 +6,11 @@ import uuid
 from datetime import datetime
 
 # Configurações de Ambiente
+if platform.system() == 'Android':
+    os.environ['KIVY_VIDEO'] = 'ffpyplayer'
+
 if platform.system() == 'Windows':
     os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
-
-# Motor de vídeo automático (Kivy escolherá o melhor nativo no Android/iOS)
-from kivy.config import Config
-Config.set('graphics', 'multisamples', '0')
 
 from kivy.clock import Clock
 from kivy.core.text import LabelBase

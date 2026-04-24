@@ -54,30 +54,34 @@ class CardExercicio(MDCard):
         self._build()
 
     def _build(self):
+        # Borda lateral decorativa
         borda = MDBoxLayout(size_hint=(None, 1), width=dp(4), md_bg_color=COR_ACCENT)
         self.add_widget(borda)
 
-        conteudo = MDBoxLayout(orientation='vertical', size_hint=(1, None), padding=dp(10), spacing=dp(5))
-        conteudo.bind(minimum_height=conteudo.setter('height'))
-        self.bind(height=conteudo.setter('height'))
+        # Conteúdo do Card (Ajustado para não espremer)
+        conteudo = MDBoxLayout(orientation='vertical', size_hint=(1, None), padding=dp(15), spacing=dp(10))
+        
+        # Garante que o Card cresça de acordo com o texto interno
+        conteudo.bind(minimum_height=self.setter('height'))
 
-        linha1 = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(40))
-        linha1.add_widget(MDLabel(text=self.ex['nome'], font_style='H6', bold=True))
+        linha1 = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(45))
+        linha1.add_widget(MDLabel(text=self.ex['nome'], font_style='H6', bold=True, theme_text_color='Primary'))
         
         if self._tem_video:
             linha1.add_widget(MDIconButton(
                 icon='play-circle-outline',
+                pos_hint={'center_y': 0.5},
                 on_release=lambda x: self.tela._ver_midia(self.ex),
             ))
         conteudo.add_widget(linha1)
 
         info = f"Séries: {self.ex.get('series','')}  •  Peso: {self.ex.get('peso','')}kg"
-        conteudo.add_widget(MDLabel(text=info, font_style='Body1', theme_text_color='Secondary'))
+        conteudo.add_widget(MDLabel(text=info, font_style='Body1', theme_text_color='Secondary', size_hint_y=None, height=dp(30)))
 
         self._btn_feito = MDRaisedButton(
             text='Feito',
             size_hint=(1, None),
-            height=dp(40),
+            height=dp(48),
             md_bg_color=self._cor_pendente,
             on_release=self._toggle_feito
         )
@@ -136,38 +140,33 @@ class TelaTreino(MDScreen):
 
     def _ver_midia(self, ex):
         try:
+            from kivy.uix.videoplayer import VideoPlayer
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            # NO ANDROID: Usa o Intent do Sistema para abrir o vídeo com o Player Nativo
-            if platform.system() == 'Android':
-                from jnius import autoclass, cast
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                Intent = autoclass('android.content.Intent')
-                Uri = autoclass('android.net.Uri')
-                File = autoclass('java.io.File')
-                
-                file_path = File(caminho)
-                uri = Uri.fromFile(file_path)
-                
-                intent = Intent(Intent.ACTION_VIEW)
-                intent.setDataAndType(uri, "video/mp4")
-                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                
-                currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
-                currentActivity.startActivity(intent)
+            if not os.path.exists(caminho):
+                raise Exception("Vídeo não encontrado.")
+
+            # keep_ratio: True impede que o vídeo seja esmagado
+            # allow_stretch: True permite que ele ocupe o espaço disponível
+            player = VideoPlayer(
+                source=caminho, 
+                state='play',
+                allow_stretch=True,
+                options={'eos': 'loop', 'keep_ratio': True}
+            )
             
-            # NO IOS: O Kivy usará o AVPlayer Nativo automaticamente no VideoPlayer
-            else:
-                from kivy.uix.videoplayer import VideoPlayer
-                player = VideoPlayer(source=caminho, state='play', options={'eos': 'loop', 'keep_ratio': True})
-                popup = Popup(title=ex['nome'], content=player, size_hint=(0.9, 0.9))
-                popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
-                popup.open()
-                
+            popup = Popup(
+                title=ex['nome'], 
+                content=player, 
+                size_hint=(0.9, 0.9)
+            )
+            popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
+            popup.open()
+            
         except Exception as e:
             self.dialog = MDDialog(
-                title="Vídeo Nativo",
-                text=f"Não foi possível abrir o player do sistema.\nErro: {str(e)}",
+                title="Vídeo",
+                text=f"Não foi possível abrir o vídeo.\n{str(e)}",
                 buttons=[MDRaisedButton(text="OK", on_release=lambda x: self.dialog.dismiss())]
             )
             self.dialog.open()

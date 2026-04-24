@@ -39,11 +39,11 @@ class TelaCadastro(MDScreen):
         )
         root.add_widget(MDBoxLayout(size_hint_y=0.2))
 
-        # Aumentada a altura do cabeçalho para não achatar os textos
+        # Aumentada a altura do cabeçalho para acomodar o nome em duas linhas
         cabecalho = MDBoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            height=dp(180), 
+            height=dp(230), 
             spacing=dp(5),
         )
         cabecalho.add_widget(MDLabel(
@@ -55,18 +55,23 @@ class TelaCadastro(MDScreen):
             height=dp(30),
         ))
         
-        # Usamos Label puro do Kivy para garantir que o tamanho 56sp seja respeitado sem encolhimento
+        # Nome Ronaldo Medeiros em duas linhas e com tamanho massivo
         from kivy.uix.label import Label
-        cabecalho.add_widget(Label(
-            text='Ronaldo Medeiros',
+        lbl_nome = Label(
+            text='Ronaldo\nMedeiros',
             halign='center',
+            valign='middle',
             font_name='ErasBoldITC',
             font_size='56sp',
             bold=True,
-            color=(1, 1, 1, 1), # Branco
+            line_height=0.9,
+            color=(1, 1, 1, 1),
             size_hint_y=None,
-            height=dp(100), # Aumentado para dar folga à letra gigante
-        ))
+            height=dp(130),
+        )
+        # Garante que o alinhamento central funcione em múltiplas linhas
+        lbl_nome.bind(width=lambda inst, w: setattr(inst, 'text_size', (w, None)))
+        cabecalho.add_widget(lbl_nome)
         
         cabecalho.add_widget(MDLabel(
             text='Fisiologista',
