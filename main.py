@@ -3,11 +3,10 @@ import os
 import platform
 import threading
 import uuid
-import traceback
 from datetime import datetime
 
 # 1. Configurações de Ambiente
-os.environ['KIVY_VIDEO'] = 'ffpyplayer'
+# Removido KIVY_VIDEO=ffpyplayer para usar o motor nativo do sistema
 if platform.system() == 'Windows':
     os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
@@ -27,7 +26,7 @@ def _pasta_downloads():
 class RonaldoMedeirosFisiologistaApp(MDApp):
     def build(self):
         try:
-            self.title = 'Ronaldo Medeiros Fisiologista'
+            self.title = 'Ronaldo Medeiros'
             self.theme_cls.primary_palette = 'BlueGray'
             self.theme_cls.theme_style = 'Dark'
 
@@ -67,7 +66,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             from telas.tela_treino import TelaTreino
             from telas.tela_historico import TelaHistorico
             from telas.tela_atividade import TelaAtividade
-            from telas.tela_configuracoes import TelaConfiguracoes
             from telas.tela_download import TelaDownload, videos_prontos
 
             self.sm = ScreenManager(transition=SlideTransition())
@@ -77,7 +75,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.sm.add_widget(TelaTreino(name='treino'))
             self.sm.add_widget(TelaHistorico(name='historico'))
             self.sm.add_widget(TelaAtividade(name='atividade'))
-            self.sm.add_widget(TelaConfiguracoes(name='configuracoes'))
 
             if not videos_prontos():
                 self.sm.current = 'download'
@@ -88,9 +85,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                 
             return self.sm
         except Exception as e:
-            error_msg = traceback.format_exc()
-            print(f"FATAL ERROR: {error_msg}")
-            return Label(text=f"Erro fatal ao iniciar:\n{error_msg}", font_size='12sp')
+            return Label(text=f"Erro ao iniciar:\n{e}")
 
     def on_start(self):
         if self.cliente:
@@ -122,9 +117,8 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         hora_str = agora.strftime('%H:%M:%S')
 
         if treino and exercicios_concluidos:
-            # Importante: Garantir que todos os campos necessários para a TelaHome estão aqui
             for ex in exercicios_concluidos:
-                registro = {
+                self.atividade.append({
                     'data':         data_str,
                     'hora':         hora_str,
                     'treino':       treino,
@@ -133,14 +127,11 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                     'series_total': ex.get('series', ''),
                     'peso':         ex.get('peso', ''),
                     'concluido':    True,
-                }
-                self.atividade.append(registro)
-            
+                })
             try:
                 with open(self.atividade_file, 'w', encoding='utf-8') as f:
                     json.dump(self.atividade, f, ensure_ascii=False, indent=2)
-            except Exception as e:
-                print(f"Erro ao salvar atividade: {e}")
+            except: pass
 
         try:
             with open(self.treinos_file, 'w', encoding='utf-8') as f:
@@ -152,24 +143,18 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                 threading.Thread(target=firebase_sync.salvar_dados, 
                                args=(self.cliente['id'], self.historico, self.atividade), 
                                daemon=True).start()
-        except Exception as e:
-            print(f"Erro ao salvar treinos/hist: {e}")
+        except: pass
 
     def _puxar_treinos_firebase(self):
         try:
             dados = firebase_sync.buscar_cliente_completo(self.cliente['id'])
-            if dados and dados.get('trainer_editou'):
+            if dados and (dados.get('trainer_editou') or not self.treinos):
                 self.treinos = dados['treinos']
                 self.treinos_nomes = dados['treinos_nomes']
                 with open(self.treinos_file, 'w', encoding='utf-8') as f:
-                    json.dump(self.treinos, f)
+                    json.dump(self.treinos, f, ensure_ascii=False)
                 Clock.schedule_once(lambda dt: self.sm.get_screen('home')._reconstruir_botoes() if self.sm.has_screen('home') else None)
         except: pass
 
 if __name__ == '__main__':
-    try:
-        RonaldoMedeirosFisiologistaApp().run()
-    except Exception:
-        # Tenta gravar o erro num arquivo caso o build falhe antes do app abrir
-        with open("crash_log.txt", "w") as f:
-            f.write(traceback.format_exc())
+    RonaldoMedeirosFisiologistaApp().run()

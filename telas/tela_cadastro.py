@@ -5,9 +5,11 @@ Exibida apenas na primeira execução (quando cliente.json não existe).
 import json
 import os
 import uuid
+import threading
 
 from kivy.core.window import Window
 from kivy.metrics import dp
+from kivy.clock import Clock
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRaisedButton
@@ -35,62 +37,69 @@ class TelaCadastro(MDScreen):
             padding=dp(40),
             spacing=dp(20),
         )
-        root.add_widget(MDBoxLayout(size_hint_y=0.25))
+        root.add_widget(MDBoxLayout(size_hint_y=0.2))
 
+        # Aumentada a altura do cabeçalho para não achatar os textos
         cabecalho = MDBoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            height=dp(116),
-            spacing=0,
+            height=dp(180), 
+            spacing=dp(5),
         )
         cabecalho.add_widget(MDLabel(
             text='Seja Bem Vindo à Plataforma Oficial do',
             halign='center',
-            font_style='H5',  # Aumentado para H5 (Impacto)
+            font_style='Subtitle1',
             theme_text_color='Secondary',
             size_hint_y=None,
-            height=dp(36),
+            height=dp(30),
         ))
+        
+        # Nome Ronaldo Medeiros como o MAIOR destaque
         cabecalho.add_widget(MDLabel(
             text='Ronaldo Medeiros',
             halign='center',
-            font_size='45sp', # Aumentado levemente para 45sp
+            font_style='H3', # Estilo gigante nativo
             bold=True,
             size_hint_y=None,
-            height=dp(62),
+            height=dp(70),
         ))
+        
         cabecalho.add_widget(MDLabel(
             text='Fisiologista',
             halign='center',
-            font_style='H5', # Aumentado para H5 (Acompanha o nome)
+            font_style='H5',
             theme_text_color='Custom',
             text_color=(0.357, 0.612, 0.965, 1),
             size_hint_y=None,
             height=dp(40),
         ))
         root.add_widget(cabecalho)
-        root.add_widget(MDBoxLayout(size_hint_y=None, height=dp(30)))
+        
+        root.add_widget(MDBoxLayout(size_hint_y=None, height=dp(20)))
+        
         root.add_widget(MDLabel(
             text='Preparamos um ambiente exclusivo para gerenciar seus treinos e sua evolução.',
             halign='center',
-            font_style='H6', # Aumentado para H6 (Leitura confortável)
+            font_style='H6',
             theme_text_color='Secondary',
             size_hint_y=None,
-            height=dp(64),
+            height=dp(60),
         ))
+        
         root.add_widget(MDLabel(
             text='Para configurar seu acesso exclusivo, digite seu nome completo.',
             halign='center',
-            font_style='Subtitle1', # Aumentado
+            font_style='Subtitle1',
             theme_text_color='Secondary',
             size_hint_y=None,
-            height=dp(52),
+            height=dp(40),
         ))
 
         self._campo_nome = MDTextField(
             hint_text='Nome completo',
             size_hint_x=1,
-            font_size='18sp', # Texto de digitação maior
+            font_size='20sp',
         )
         root.add_widget(self._campo_nome)
 
@@ -106,7 +115,7 @@ class TelaCadastro(MDScreen):
         root.add_widget(MDRaisedButton(
             text='COMEÇAR',
             size_hint=(1, None),
-            height=dp(48),
+            height=dp(56),
             rounded_button=True,
             on_release=lambda x: self._cadastrar(),
         ))
@@ -122,22 +131,17 @@ class TelaCadastro(MDScreen):
         self._lbl_erro.theme_text_color = 'Secondary'
         self._lbl_erro.text = 'Verificando cadastro...'
         
-        # Rodamos a busca em uma thread para não travar a tela
-        import threading
         threading.Thread(target=self._processar_cadastro, args=(nome,), daemon=True).start()
 
     def _processar_cadastro(self, nome):
-        from kivy.clock import Clock
         app = MDApp.get_running_app()
         
-        # 1. Tenta encontrar o ID existente por nome
+        # 1. Busca por nome no Firebase
         cliente_id_existente = firebase_sync.buscar_id_por_nome(nome)
         
         if cliente_id_existente:
             cliente_id = cliente_id_existente
-            print(f"[Cadastro] Cliente encontrado! Usando ID: {cliente_id}")
-            
-            # BUSCA OS DADOS REAIS DO FIREBASE PARA EVITAR APP VAZIO
+            # 2. SE EXISTE, BAIXA OS DADOS NA HORA
             dados = firebase_sync.buscar_cliente_completo(cliente_id)
             if dados:
                 app.treinos = dados.get('treinos', {})
@@ -147,38 +151,25 @@ class TelaCadastro(MDScreen):
             cliente_id = str(uuid.uuid4())
             app.treinos = {}
             app.treinos_nomes = {}
-            print(f"[Cadastro] Novo cliente. Gerado ID: {cliente_id}")
 
-        # 2. Atualiza o objeto do app
         app.cliente = {'id': cliente_id, 'nome': nome}
 
-        # 3. Salva os arquivos locais (Agora com os dados recuperados se existirem)
+        # 3. Salva arquivos locais
         try:
             with open(app.cliente_file, 'w', encoding='utf-8') as f:
                 json.dump(app.cliente, f, ensure_ascii=False, indent=2)
-
             with open(app.treinos_file, 'w', encoding='utf-8') as f:
                 json.dump(app.treinos, f, ensure_ascii=False, indent=2)
-            
             with open(app.treinos_nomes_file, 'w', encoding='utf-8') as f:
                 json.dump(app.treinos_nomes, f, ensure_ascii=False, indent=2)
-
-            # Histórico e atividade iniciam vazios ou você pode expandir para recuperar também
-            if not cliente_id_existente:
-                app.historico = {}
-                app.atividade = []
-                with open(app.historico_file, 'w', encoding='utf-8') as f:
-                    json.dump(app.historico, f, ensure_ascii=False, indent=2)
-                with open(app.atividade_file, 'w', encoding='utf-8') as f:
-                    json.dump(app.atividade, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"Erro ao salvar arquivos iniciais: {e}")
+            print(f"Erro ao salvar: {e}")
 
-        # 4. Se for novo, cria no Firestore.
+        # 4. Se for novo, registra no banco
         if not cliente_id_existente:
             firebase_sync.criar_cliente(cliente_id, nome)
 
-        # 5. Vai para a Home na thread principal
+        # 5. Finaliza
         Clock.schedule_once(lambda dt: self._finalizar_cadastro(), 0)
 
     def _finalizar_cadastro(self):

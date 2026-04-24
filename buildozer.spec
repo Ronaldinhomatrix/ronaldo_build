@@ -6,13 +6,10 @@ source.dir = .
 source.include_exts = py,ttf,TTF,png,jpg,mp4,json
 source.exclude_dirs = p4a_recipes,painel,.git,bin
 icon.filename = %(source.dir)s/icon_rm.png
-version = 1.1
+version = 1.2
 
-# Requisitos expandidos para garantir que o Firebase e o KivyMD não crasham
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,ffpyplayer,ffmpeg,openssl,sqlite3,requests,urllib3,android,pyasn1,idna,charset-normalizer
-
-# (str) Custom source for ffpyplayer
-# p4a.local_recipes = ./p4a_recipes
+# Removido ffpyplayer/ffmpeg para usar o motor nativo (mais leve e estável)
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,urllib3,android,pyasn1,idna,charset-normalizer
 
 orientation = portrait
 fullscreen = 0
