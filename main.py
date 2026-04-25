@@ -142,8 +142,9 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             
             if self.cliente:
                 import firebase_sync
+                # Salva atividade e histórico
                 threading.Thread(target=firebase_sync.salvar_dados, 
-                               args=(self.cliente['id'], self.historico, self.atividade), 
+                               args=(self.cliente['id'], self.historico, self.atividade, None),
                                daemon=True).start()
         except: pass
 

@@ -1,6 +1,7 @@
 import os
 import unicodedata
 import platform
+import threading
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -31,10 +32,6 @@ class CardExercicio(MDCard):
         sem_acento = unicodedata.normalize('NFD', nome)
         sem_acento = ''.join(c for c in sem_acento if unicodedata.category(c) != 'Mn')
         arquivo = sem_acento.lower().strip().replace(' ', '_') + '.mp4'
-        
-        # Correção para Leg Press (se vier como legpress45 ou legpress_45 vira leg_press_45)
-        if 'legpress' in arquivo and 'leg_press' not in arquivo:
-            arquivo = arquivo.replace('legpress', 'leg_press')
         
         from telas.tela_download import pasta_videos
         externo = os.path.join(pasta_videos(), arquivo)
@@ -199,14 +196,35 @@ class TelaTreino(MDScreen):
     def _salvar_obs(self, ex, card, texto, dlg):
         ex['obs'] = texto.strip()
         app = MDApp.get_running_app()
+        
+        # Salva localmente
         app.salvar()
+        
         tem_obs = bool(ex['obs'])
         dlg.dismiss()
+        
         if tem_obs and app.cliente:
             card._btn_obs.text = 'Enviando...'
             card._btn_obs.md_bg_color = COR_OBS
+            
+            # Sincroniza a observação IMEDIATAMENTE com o Firestore
             import firebase_sync
-            firebase_sync.notificar_obs(app.cliente['nome'], ex['nome'], ex['obs'], on_success=lambda: self._on_obs_sucesso(card), on_error=lambda m: self._on_obs_erro(card, m))
+            
+            # 1. Envia notificação para o Telegram (Ronaldo)
+            firebase_sync.notificar_obs(
+                app.cliente['nome'], 
+                ex['nome'], 
+                ex['obs'], 
+                on_success=lambda: self._on_obs_sucesso(card), 
+                on_error=lambda m: self._on_obs_erro(card, m)
+            )
+            
+            # 2. Salva a observação no documento do atleta no Firestore
+            threading.Thread(
+                target=firebase_sync.salvar_dados,
+                args=(app.cliente['id'], app.historico, app.atividade, ex['obs']),
+                daemon=True
+            ).start()
         else:
             card._btn_obs.text = 'Adicionar Observação'
             card._btn_obs.md_bg_color = card._cor_pendente
