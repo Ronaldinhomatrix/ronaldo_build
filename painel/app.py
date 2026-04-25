@@ -263,9 +263,11 @@ def index():
     clientes = []
     for d in docs:
         data = d.to_dict()
-        obs = data.get('obs_cliente', {}) or {}
+        obs = data.get('obs_cliente', {})
+        if not isinstance(obs, dict):
+            obs = {}
         # Conta quantas chaves (ID do exercício) têm observação não vazia
-        tem_obs = any(v.strip() for v in obs.values()) if obs else False
+        tem_obs = any(str(v).strip() for v in obs.values()) if obs else False
         
         clientes.append({
             'id':            d.id,

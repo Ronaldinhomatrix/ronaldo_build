@@ -219,10 +219,10 @@ class TelaTreino(MDScreen):
                 on_error=lambda m: self._on_obs_erro(card, m)
             )
             
-            # 2. Salva a observação no documento do atleta no Firestore
+            # 2. Salva a observação no documento do atleta no Firestore (como um mapa/dicionário)
             threading.Thread(
                 target=firebase_sync.salvar_dados,
-                args=(app.cliente['id'], app.historico, app.atividade, ex['obs']),
+                args=(app.cliente['id'], app.historico, app.atividade, {ex['id']: ex['obs']}),
                 daemon=True
             ).start()
         else:
