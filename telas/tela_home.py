@@ -295,7 +295,7 @@ class TelaHome(MDScreen):
         def _abrir_whatsapp(x):
             import webbrowser
             # Link direto para o seu WhatsApp com uma mensagem inicial opcional
-            link = "https://wa.me/5514981428393?text=Olá Ronaldo, preciso de suporte no app!"
+            link = "https://wa.me/5514981428393?text=Olá Ronaldo Medeiros"
             webbrowser.open(link)
 
         # Ajustamos o texto com quebra de linha e damos mais destaque ao botão de contato
