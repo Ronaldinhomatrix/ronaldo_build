@@ -27,14 +27,21 @@ COR_PENDENTE  = get_color_from_hex('#3D3D3D')
 class CardExercicio(MDCard):
     @staticmethod
     def _caminho_video(nome):
+        # Normalização rigorosa para encontrar o arquivo
         sem_acento = unicodedata.normalize('NFD', nome)
         sem_acento = ''.join(c for c in sem_acento if unicodedata.category(c) != 'Mn')
-        arquivo = sem_acento.lower().replace(' ', '_') + '.mp4'
+        arquivo = sem_acento.lower().strip().replace(' ', '_') + '.mp4'
+        
         from telas.tela_download import pasta_videos
         externo = os.path.join(pasta_videos(), arquivo)
+        
         if os.path.exists(externo):
             return externo
-        return os.path.join('assets', 'videos', arquivo)
+            
+        # Fallback para assets - no Android, assets devem ser acessados sem o prefixo 'assets/' 
+        # se estiverem na raiz do source.dir, mas como estão em assets/videos/
+        path_assets = os.path.join('assets', 'videos', arquivo)
+        return path_assets
 
     def __init__(self, ex, tela, **kwargs):
         super().__init__(
@@ -213,31 +220,42 @@ class TelaTreino(MDScreen):
 
     def _ver_midia(self, ex):
         try:
-            # Tenta usar Video do Kivy que é mais leve que VideoPlayer para um Popup simples
             from kivy.uix.video import Video
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            if not os.path.exists(caminho):
-                MDDialog(text=f"Vídeo não encontrado localmente:\n{os.path.basename(caminho)}").open()
+            # No Android, não podemos usar os.path.exists para arquivos dentro do APK (assets)
+            # Então só validamos se for um caminho externo (fora do APK)
+            if '/' in caminho and not caminho.startswith('assets') and not os.path.exists(caminho):
+                MDDialog(text=f"Vídeo não encontrado:\n{os.path.basename(caminho)}").open()
                 return
 
-            # Configura o player
-            # eos='loop' faz o vídeo repetir
-            video = Video(source=caminho, state='play', options={'eos': 'loop'}, allow_stretch=True)
+            # Criamos o widget de vídeo. 
+            # Importante: No Android, o H.265 pode falhar se o provider não estiver pronto.
+            video = Video(
+                source=caminho,
+                state='stop', # Começa parado para carregar com calma
+                options={'eos': 'loop'},
+                allow_stretch=True
+            )
             
             popup = Popup(
                 title=ex['nome'],
                 content=video,
-                size_hint=(0.9, 0.7),
-                background_color=(0, 0, 0, 0.8)
+                size_hint=(0.9, 0.8),
+                background_color=(0, 0, 0, 0.9)
             )
             
-            # Garante que o vídeo pare ao fechar o popup para não continuar consumindo recurso/áudio
+            # Agenda o início do vídeo para um frame depois da abertura do popup
+            # Isso evita crash de renderização simultânea
+            def start_video(*args):
+                video.state = 'play'
+            
+            popup.bind(on_open=start_video)
             popup.bind(on_dismiss=lambda p: setattr(video, 'state', 'stop'))
             popup.open()
             
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir vídeo: {e}").open()
+            MDDialog(text=f"Erro ao carregar vídeo: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'

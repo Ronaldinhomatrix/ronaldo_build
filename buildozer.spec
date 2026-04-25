@@ -9,7 +9,7 @@ icon.filename = %(source.dir)s/icon_rm.png
 version = 2.9
 
 # Requirements simplificados e com pyjnius (necessário para o vídeo nativo)
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius,ffpyplayer
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius,ffpyplayer,ffmpeg
 
 orientation = portrait
 fullscreen = 0
