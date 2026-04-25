@@ -58,7 +58,11 @@ class CardExercicio(MDCard):
         app = MDApp.get_running_app()
         self._feito = app.progresso_treino.get('feitos', {}).get(ex.get('id', ''), False)
         self._cor_pendente = COR_PENDENTE
-        self._tem_video = os.path.exists(self._caminho_video(ex.get('nome', '')))
+        
+        # Verificação robusta de vídeo (detecta assets no Android)
+        caminho = self._caminho_video(ex.get('nome', ''))
+        self._tem_video = os.path.exists(caminho) or caminho.startswith('assets')
+        
         self._build()
 
     def _build(self):
@@ -243,13 +247,12 @@ class TelaTreino(MDScreen):
             from kivy.uix.videoplayer import VideoPlayer
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            # No Android 14, o VideoPlayer é mais robusto para gerenciar o stream do MediaPlayer
-            # do que o widget Video puro quando se trata de arquivos em cache ou assets.
+            # No Android 14, o VideoPlayer é mais robusto para gerenciar o stream do MediaPlayer.
+            # Removido 'allow_stretch' que não existe no VideoPlayer.
             player = VideoPlayer(
                 source=caminho,
                 state='play',
-                options={'eos': 'loop'},
-                allow_stretch=True
+                options={'eos': 'loop'}
             )
             
             popup = Popup(
