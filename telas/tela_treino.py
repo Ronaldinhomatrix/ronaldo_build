@@ -223,17 +223,16 @@ class TelaTreino(MDScreen):
             from kivy.uix.video import Video
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            # No Android, não podemos usar os.path.exists para arquivos dentro do APK (assets)
-            # Então só validamos se for um caminho externo (fora do APK)
-            if '/' in caminho and not caminho.startswith('assets') and not os.path.exists(caminho):
-                MDDialog(text=f"Vídeo não encontrado:\n{os.path.basename(caminho)}").open()
+            # Validação de existência para arquivos externos
+            if not caminho.startswith('assets') and not os.path.exists(caminho):
+                MDDialog(text=f"Vídeo não encontrado. Tente sincronizar novamente.").open()
                 return
 
-            # Criamos o widget de vídeo. 
-            # Importante: No Android, o H.265 pode falhar se o provider não estiver pronto.
+            # No Android, o H.265 funciona melhor com o player nativo do sistema.
+            # Removendo ffpyplayer, o Kivy usará o 'android' provider (MediaPlayer nativo).
             video = Video(
                 source=caminho,
-                state='stop', # Começa parado para carregar com calma
+                state='play',
                 options={'eos': 'loop'},
                 allow_stretch=True
             )
@@ -241,21 +240,16 @@ class TelaTreino(MDScreen):
             popup = Popup(
                 title=ex['nome'],
                 content=video,
-                size_hint=(0.9, 0.8),
+                size_hint=(0.9, 0.5), # Altura menor para evitar problemas de proporção/crash
                 background_color=(0, 0, 0, 0.9)
             )
             
-            # Agenda o início do vídeo para um frame depois da abertura do popup
-            # Isso evita crash de renderização simultânea
-            def start_video(*args):
-                video.state = 'play'
-            
-            popup.bind(on_open=start_video)
+            # Força o stop ao fechar para liberar o hardware decoder do Android
             popup.bind(on_dismiss=lambda p: setattr(video, 'state', 'stop'))
             popup.open()
             
         except Exception as e:
-            MDDialog(text=f"Erro ao carregar vídeo: {e}").open()
+            MDDialog(text=f"Erro ao abrir player nativo: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
