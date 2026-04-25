@@ -13,9 +13,7 @@ from kivymd.uix.progressbar import MDProgressBar
 from kivymd.uix.screen import MDScreen
 
 _BASE_URL = (
-    'https://raw.githubusercontent.com/'
-    'marcosalexandredemedeiros-glitch/'
-    'ronaldo-medeiros-fisiologista-videos/main/'
+    'https://raw.githubusercontent.com/Ronaldinhomatrix/ronaldo_build/main/videos/'
 )
 
 VIDEOS = [
