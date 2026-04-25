@@ -210,13 +210,15 @@ def _carregar_cliente(cliente_id):
     treinos         = json.loads(d.get('treinos', '{}'))
     atividade       = json.loads(d.get('atividade', '[]'))
     historico_pesos = json.loads(d.get('historico', '{}'))
-    obs_cliente     = d.get('obs_cliente', {}) or {}
+    obs_cliente     = d.get('obs_cliente', {})
+    if not isinstance(obs_cliente, dict):
+        obs_cliente = {}
     treinos_nomes   = json.loads(d.get('treinos_nomes', '{}'))
 
     # Mescla obs do cliente nos exercícios pelo ex_id
     for exercicios in treinos.values():
         for ex in exercicios:
-            ex['obs'] = obs_cliente.get(ex.get('id', ''), '')
+            ex['obs'] = obs_cliente.get(ex.get('id', ''), '') if isinstance(obs_cliente, dict) else ''
 
     treino_atual_manual = d.get('treino_atual', '')
     proximo = treino_atual_manual if treino_atual_manual in treinos else _proximo_treino(treinos, atividade)
@@ -516,7 +518,9 @@ def limpar_obs(cliente_id):
         return 'Cliente não encontrado.', 404
     
     dados = cliente_snap.to_dict()
-    obs = dados.get('obs_cliente', {}) or {}
+    obs = dados.get('obs_cliente', {})
+    if not isinstance(obs, dict):
+        obs = {}
     
     if ex_id:
         # Limpa observação de um exercício específico
@@ -589,7 +593,9 @@ def exportar_completo(cliente_id):
     treinos_nomes   = json.loads(d.get('treinos_nomes', '{}'))
     atividade       = json.loads(d.get('atividade', '[]'))
     historico_pesos = json.loads(d.get('historico', '{}'))
-    obs_cliente     = d.get('obs_cliente', {}) or {}
+    obs_cliente     = d.get('obs_cliente', {})
+    if not isinstance(obs_cliente, dict):
+        obs_cliente = {}
 
     dados = {
         'exportado_em': datetime.now().strftime('%d/%m/%Y %H:%M'),
