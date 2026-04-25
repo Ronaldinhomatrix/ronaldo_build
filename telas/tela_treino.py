@@ -246,13 +246,12 @@ class TelaTreino(MDScreen):
             from kivy.uix.videoplayer import VideoPlayer
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            # No Android 14, precisamos garantir que o MediaPlayer tenha acesso real ao arquivo.
-            # Se for um asset, o caminho começa com 'assets/'. Se for download, é um caminho absoluto.
-            
+            # Forçamos o uso do ffpyplayer (software decoder) para H.265 no Android 14
+            # Isso ignora o player nativo do Android que está dando tela escura
             player = VideoPlayer(
                 source=caminho,
-                state='stop',
-                options={'eos': 'loop'}
+                state='play',
+                options={'eos': 'loop', 'base': 'ffpyplayer'}
             )
             
             popup = Popup(
@@ -262,12 +261,6 @@ class TelaTreino(MDScreen):
                 background_color=(0, 0, 0, 1)
             )
             
-            # Função para "acordar" o vídeo após a janela abrir
-            def _play_video(*args):
-                # Pequeno delay para o Android preparar a superfície de vídeo
-                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 0.5)
-            
-            popup.bind(on_open=_play_video)
             popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
             popup.open()
             

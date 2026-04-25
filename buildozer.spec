@@ -8,8 +8,8 @@ source.exclude_dirs = p4a_recipes,painel,.git,bin
 icon.filename = %(source.dir)s/icon_rm.png
 version = 2.9
 
-# Requirements limpos - usando player nativo do Android para maior estabilidade
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius
+# Requirements limpos - usando ffpyplayer para máxima compatibilidade H.265
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius,ffpyplayer,ffmpeg
 
 orientation = portrait
 fullscreen = 0
