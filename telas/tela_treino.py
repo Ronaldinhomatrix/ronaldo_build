@@ -32,16 +32,17 @@ class CardExercicio(MDCard):
         sem_acento = ''.join(c for c in sem_acento if unicodedata.category(c) != 'Mn')
         arquivo = sem_acento.lower().strip().replace(' ', '_') + '.mp4'
         
+        # Correção para Leg Press (se vier como legpress45 ou legpress_45 vira leg_press_45)
+        if 'legpress' in arquivo and 'leg_press' not in arquivo:
+            arquivo = arquivo.replace('legpress', 'leg_press')
+        
         from telas.tela_download import pasta_videos
         externo = os.path.join(pasta_videos(), arquivo)
         
         if os.path.exists(externo):
             return externo
             
-        # Fallback para assets - no Android, assets devem ser acessados sem o prefixo 'assets/' 
-        # se estiverem na raiz do source.dir, mas como estão em assets/videos/
-        path_assets = os.path.join('assets', 'videos', arquivo)
-        return path_assets
+        return os.path.join('assets', 'videos', arquivo)
 
     def __init__(self, ex, tela, **kwargs):
         super().__init__(
@@ -223,33 +224,31 @@ class TelaTreino(MDScreen):
             from kivy.uix.video import Video
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            # Validação de existência para arquivos externos
-            if not caminho.startswith('assets') and not os.path.exists(caminho):
-                MDDialog(text=f"Vídeo não encontrado. Tente sincronizar novamente.").open()
-                return
-
-            # No Android, o H.265 funciona melhor com o player nativo do sistema.
-            # Removendo ffpyplayer, o Kivy usará o 'android' provider (MediaPlayer nativo).
+            # Se for asset, no Android o os.path.exists falha. 
+            # Mas o Kivy consegue abrir se o arquivo estiver no pacote.
+            
             video = Video(
                 source=caminho,
                 state='play',
                 options={'eos': 'loop'},
-                allow_stretch=True
+                allow_stretch=True,
+                volume=1.0
             )
             
             popup = Popup(
                 title=ex['nome'],
                 content=video,
-                size_hint=(0.9, 0.5), # Altura menor para evitar problemas de proporção/crash
+                size_hint=(0.9, 0.6),
                 background_color=(0, 0, 0, 0.9)
             )
             
-            # Força o stop ao fechar para liberar o hardware decoder do Android
+            # Garante o play ao abrir e stop ao fechar
+            popup.bind(on_open=lambda x: setattr(video, 'state', 'play'))
             popup.bind(on_dismiss=lambda p: setattr(video, 'state', 'stop'))
             popup.open()
             
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir player nativo: {e}").open()
+            MDDialog(text=f"Erro ao abrir player: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
