@@ -919,19 +919,20 @@ def _enviar_telegram_obs(cliente_nome, ex_nome, obs_texto):
     token   = os.environ.get('TELEGRAM_TOKEN', '')
     chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
     if not token or not chat_id:
+        print("[Telegram] Token ou Chat ID faltando nas variaveis de ambiente.")
         return
 
     import urllib.request as _req
+    # Usamos texto simples para evitar erros de Markdown do Telegram
     texto = (
-        f'📋 *Nova observação*\n'
-        f'Cliente: *{cliente_nome}*\n'
-        f'Exercício: *{ex_nome}*\n'
+        f'📋 Nova observação\n'
+        f'Cliente: {cliente_nome}\n'
+        f'Exercício: {ex_nome}\n'
         f'Obs: {obs_texto}'
     )
     body = json.dumps({
         'chat_id':    chat_id,
         'text':       texto,
-        'parse_mode': 'Markdown',
     }).encode('utf-8')
     req = _req.Request(
         f'https://api.telegram.org/bot{token}/sendMessage',
@@ -939,7 +940,8 @@ def _enviar_telegram_obs(cliente_nome, ex_nome, obs_texto):
         headers={'Content-Type': 'application/json'},
     )
     try:
-        _req.urlopen(req, timeout=10)
+        _req.urlopen(req, timeout=15)
+        print(f"[Telegram] Notificação enviada para {cliente_nome}")
     except Exception as e:
         print(f'[Telegram] erro ao enviar: {e}')
 

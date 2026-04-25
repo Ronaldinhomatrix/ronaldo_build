@@ -243,26 +243,31 @@ class TelaTreino(MDScreen):
 
     def _ver_midia(self, ex):
         try:
-            from kivy.uix.video import Video
             from kivy.uix.videoplayer import VideoPlayer
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            # No Android 14, o VideoPlayer é mais robusto para gerenciar o stream do MediaPlayer.
-            # Removido 'allow_stretch' que não existe no VideoPlayer.
+            # No Android 14, precisamos garantir que o MediaPlayer tenha acesso real ao arquivo.
+            # Se for um asset, o caminho começa com 'assets/'. Se for download, é um caminho absoluto.
+            
             player = VideoPlayer(
                 source=caminho,
-                state='play',
+                state='stop',
                 options={'eos': 'loop'}
             )
             
             popup = Popup(
                 title=ex['nome'],
                 content=player,
-                size_hint=(0.95, 0.7),
-                background_color=(0, 0, 0, 0.95)
+                size_hint=(0.95, 0.75),
+                background_color=(0, 0, 0, 1)
             )
             
-            # Garante que os recursos de hardware sejam liberados ao fechar
+            # Função para "acordar" o vídeo após a janela abrir
+            def _play_video(*args):
+                # Pequeno delay para o Android preparar a superfície de vídeo
+                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 0.5)
+            
+            popup.bind(on_open=_play_video)
             popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
             popup.open()
             
