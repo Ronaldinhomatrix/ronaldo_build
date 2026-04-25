@@ -243,29 +243,41 @@ class TelaTreino(MDScreen):
 
     def _ver_midia(self, ex):
         try:
-            from kivy.uix.videoplayer import VideoPlayer
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            # Forçamos o uso do ffpyplayer (software decoder) para H.265 no Android 14
-            # Isso ignora o player nativo do Android que está dando tela escura
-            player = VideoPlayer(
-                source=caminho,
-                state='play',
-                options={'eos': 'loop', 'base': 'ffpyplayer'}
-            )
-            
-            popup = Popup(
-                title=ex['nome'],
-                content=player,
-                size_hint=(0.95, 0.75),
-                background_color=(0, 0, 0, 1)
-            )
-            
-            popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
-            popup.open()
-            
+            if platform.system() == 'Android':
+                # SOLUÇÃO DEFINITIVA ANDROID 14: Usa Intent Nativa para abrir o Player do Sistema
+                # Isso evita tela branca, crash de codec H.265 e problemas de hardware.
+                from jnius import autoclass, cast
+                
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                Intent = autoclass('android.content.Intent')
+                Uri = autoclass('android.net.Uri')
+                File = autoclass('java.io.File')
+                
+                # Prepara o arquivo e a URI
+                arquivo_java = File(caminho)
+                uri = Uri.fromFile(arquivo_java)
+                
+                # Configura a Intent para visualizar vídeo
+                intent = Intent(Intent.ACTION_VIEW)
+                intent.setDataAndType(uri, "video/mp4")
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                
+                # Dispara o player nativo
+                PythonActivity.mActivity.startActivity(intent)
+                
+            else:
+                # iOS e Windows continuam usando o player interno que funciona bem neles
+                from kivy.uix.videoplayer import VideoPlayer
+                player = VideoPlayer(source=caminho, state='play', options={'eos': 'loop'})
+                popup = Popup(title=ex['nome'], content=player, size_hint=(0.95, 0.8))
+                popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
+                popup.open()
+                
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir player: {e}").open()
+            MDDialog(text=f"Não foi possível abrir o vídeo nativo.\nVerifique se o arquivo foi baixado.\nErro: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
