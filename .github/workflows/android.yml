@@ -38,6 +38,7 @@ jobs:
           yes | buildozer android debug
         env:
           BUILDOZER_ALLOW_ORG_NAME_START_WITH_DIGIT: 1
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
