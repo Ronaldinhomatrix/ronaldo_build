@@ -239,40 +239,47 @@ class TelaTreino(MDScreen):
     def _ver_midia(self, ex):
         try:
             import shutil
+            from kivy.utils import platform as kivy_platform
+            
             caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
             app = MDApp.get_running_app()
             
-            # 1. Extração do vídeo para local real (essencial para o player externo ler)
-            nome_arquivo = os.path.basename(caminho_asset)
-            caminho_real = os.path.join(app.user_data_dir, nome_arquivo)
+            # Determinamos um caminho de cache externo que o Android 14 permite compartilhar
+            if kivy_platform == 'android':
+                from android.storage import app_storage_path, primary_external_storage_path
+                # Usamos o armazenamento externo para que o player do sistema tenha acesso total
+                ext_path = primary_external_storage_path()
+                cache_dir = os.path.join(ext_path, 'Android', 'data', 'com.ronaldomedeiros.ronaldo_medeiros', 'cache')
+                if not os.path.exists(cache_dir):
+                    os.makedirs(cache_dir, exist_ok=True)
+                caminho_real = os.path.join(cache_dir, os.path.basename(caminho_asset))
+            else:
+                caminho_real = os.path.join(app.user_data_dir, os.path.basename(caminho_asset))
             
-            if not os.path.exists(caminho_real):
-                with open(caminho_asset, 'rb') as f_in:
-                    with open(caminho_real, 'wb') as f_out:
-                        shutil.copyfileobj(f_in, f_out)
+            # Extração forçada para garantir que o arquivo esteja pronto para o player externo
+            with open(caminho_asset, 'rb') as f_in:
+                with open(caminho_real, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
             
-            if platform.system() == 'Android':
-                # 2. Ponte Nativa Android: Abre o Player do Sistema
-                from jnius import autoclass, cast
+            if kivy_platform == 'android':
+                # SOLUÇÃO MESTRE: Abre no Player Nativo do Sistema (Blindado contra tela preta)
+                from jnius import autoclass
                 PythonActivity = autoclass('org.kivy.android.PythonActivity')
                 Intent = autoclass('android.content.Intent')
                 Uri = autoclass('android.net.Uri')
                 File = autoclass('java.io.File')
                 
-                # Prepara arquivo com permissão
                 arquivo_java = File(caminho_real)
-                # No Android 14, usamos o FileProvider ou Uri simples para arquivos internos
                 uri = Uri.fromFile(arquivo_java)
                 
                 intent = Intent(Intent.ACTION_VIEW)
                 intent.setDataAndType(uri, "video/mp4")
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                # Permissão vital para o player ler o arquivo
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 
                 PythonActivity.mActivity.startActivity(intent)
             else:
-                # iOS/Windows: Player interno continua estável
+                # iOS e desktop continuam com player interno (estável nessas plataformas)
                 from kivy.uix.videoplayer import VideoPlayer
                 player = VideoPlayer(source=caminho_real, state='play', options={'eos': 'loop'})
                 popup = Popup(title=ex['nome'], content=player, size_hint=(0.95, 0.8))
@@ -280,7 +287,7 @@ class TelaTreino(MDScreen):
                 popup.open()
                 
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir vídeo. Verifique se o arquivo existe.\nErro: {e}").open()
+            MDDialog(text=f"Erro ao abrir vídeo.\nVerifique se o arquivo existe.\nErro: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
