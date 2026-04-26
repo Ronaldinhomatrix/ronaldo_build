@@ -33,12 +33,7 @@ class CardExercicio(MDCard):
         sem_acento = ''.join(c for c in sem_acento if unicodedata.category(c) != 'Mn')
         arquivo = sem_acento.lower().strip().replace(' ', '_') + '.mp4'
         
-        from telas.tela_download import pasta_videos
-        externo = os.path.join(pasta_videos(), arquivo)
-        
-        if os.path.exists(externo):
-            return externo
-            
+        # Agora buscamos exclusivamente dentro dos assets do APK
         return os.path.join('assets', 'videos', arquivo)
 
     def __init__(self, ex, tela, **kwargs):

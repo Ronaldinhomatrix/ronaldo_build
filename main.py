@@ -75,9 +75,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.sm.add_widget(TelaAtividade(name='atividade'))
 
             # Decisão de tela inicial
-            if not videos_prontos():
-                self.sm.current = 'download'
-            elif self.cliente:
+            if self.cliente:
                 self.sm.current = 'home'
             else:
                 self.sm.current = 'cadastro'

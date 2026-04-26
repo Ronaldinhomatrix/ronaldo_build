@@ -4,7 +4,7 @@ package.name = ronaldo_medeiros
 package.domain = com.ronaldomedeiros
 source.dir = .
 source.include_exts = py,ttf,TTF,png,jpg,mp4,json
-source.exclude_dirs = p4a_recipes,painel,.git,bin,videos
+source.exclude_dirs = p4a_recipes,painel,.git,bin
 icon.filename = %(source.dir)s/icon_rm.png
 version = 2.9
 
