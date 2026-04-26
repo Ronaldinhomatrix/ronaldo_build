@@ -246,11 +246,21 @@ class TelaTreino(MDScreen):
             from kivy.uix.videoplayer import VideoPlayer
             caminho = CardExercicio._caminho_video(ex.get('nome', ''))
             
-            # Com vídeos em H.264, voltamos para o Player Interno elegante.
-            # Esta solução é 100% compatível com Android e iOS.
+            # Verificamos se o arquivo existe e tentamos garantir permissão de leitura
+            if not os.path.exists(caminho) and not caminho.startswith('assets'):
+                MDDialog(text=f"Vídeo não encontrado localmente.").open()
+                return
+
+            # Para Android 14, garantimos que o arquivo tenha permissão de leitura global 
+            # se estiver fora dos assets. Isso evita a tela branca.
+            if platform.system() == 'Android' and not caminho.startswith('assets'):
+                try:
+                    os.chmod(caminho, 0o644)
+                except: pass
+
             player = VideoPlayer(
                 source=caminho,
-                state='play',
+                state='stop', # Começa parado para carregar a textura
                 options={'eos': 'loop'}
             )
             
@@ -261,12 +271,16 @@ class TelaTreino(MDScreen):
                 background_color=(0, 0, 0, 0.95)
             )
             
-            # Garante que o vídeo pare e libere recursos ao fechar o popup
+            # Pequeno atraso para dar o play apenas após o popup estar visível
+            def _start(*args):
+                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 0.3)
+
+            popup.bind(on_open=_start)
             popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
             popup.open()
             
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir o vídeo.\nCertifique-se de que os vídeos foram convertidos para H.264.\nErro: {e}").open()
+            MDDialog(text=f"Erro ao abrir player: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
