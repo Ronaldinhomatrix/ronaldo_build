@@ -238,46 +238,52 @@ class TelaTreino(MDScreen):
 
     def _ver_midia(self, ex):
         try:
-            from kivy.uix.videoplayer import VideoPlayer
+            from kivy.uix.video import Video
             import shutil
             
             caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
             app = MDApp.get_running_app()
             
-            # SOLUÇÃO DEFINITIVA: Extrair o vídeo do APK para uma pasta real antes de dar o Play
-            # Isso garante que o driver de vídeo do Android consiga ler o arquivo.
+            # No Android 14, usamos o Cache Externo que é mais "visível" para o sistema
+            if platform.system() == 'Android':
+                from android.storage import app_storage_path
+                base_path = app_storage_path()
+            else:
+                base_path = app.user_data_dir
+
             nome_arquivo = os.path.basename(caminho_asset)
-            caminho_real = os.path.join(app.user_data_dir, nome_arquivo)
+            caminho_real = os.path.join(base_path, nome_arquivo)
             
-            # Se o arquivo ainda não foi extraído, vamos fazer isso agora
-            if not os.path.exists(caminho_real):
-                try:
-                    # O Kivy abre arquivos dentro do APK de forma transparente com o open()
-                    with open(caminho_asset, 'rb') as f_in:
-                        with open(caminho_real, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
-                except Exception as e:
-                    print(f"Erro ao extrair vídeo: {e}")
-            
-            # Agora damos o play no arquivo real (fora do APK)
-            player = VideoPlayer(
+            # Forçamos a extração para garantir que o arquivo seja "fresco" e visível
+            try:
+                with open(caminho_asset, 'rb') as f_in:
+                    with open(caminho_real, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                # Dá permissão total ao arquivo extraído
+                os.chmod(caminho_real, 0o666)
+            except Exception as e:
+                print(f"Erro na extração: {e}")
+
+            # Usamos o widget Video simples, que é mais estável para renderização direta
+            video = Video(
                 source=caminho_real,
                 state='play',
-                options={'eos': 'loop'}
+                options={'eos': 'loop'},
+                allow_stretch=True
             )
             
             popup = Popup(
                 title=ex['nome'],
-                content=player,
-                size_hint=(0.95, 0.8),
-                background_color=(0, 0, 0, 0.95)
+                content=video,
+                size_hint=(0.95, 0.7),
+                background_color=(0, 0, 0, 1)
             )
             
-            popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
+            popup.bind(on_dismiss=lambda p: setattr(video, 'state', 'stop'))
             popup.open()
             
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir player: {e}").open()
+            MDDialog(text=f"Erro crítico no player: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
