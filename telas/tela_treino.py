@@ -239,23 +239,30 @@ class TelaTreino(MDScreen):
     def _ver_midia(self, ex):
         try:
             from kivy.uix.videoplayer import VideoPlayer
-            caminho = CardExercicio._caminho_video(ex.get('nome', ''))
+            import shutil
             
-            # Verificamos se o arquivo existe e tentamos garantir permissão de leitura
-            if not os.path.exists(caminho) and not caminho.startswith('assets'):
-                MDDialog(text=f"Vídeo não encontrado localmente.").open()
-                return
-
-            # Para Android 14, garantimos que o arquivo tenha permissão de leitura global 
-            # se estiver fora dos assets. Isso evita a tela branca.
-            if platform.system() == 'Android' and not caminho.startswith('assets'):
+            caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
+            app = MDApp.get_running_app()
+            
+            # SOLUÇÃO DEFINITIVA: Extrair o vídeo do APK para uma pasta real antes de dar o Play
+            # Isso garante que o driver de vídeo do Android consiga ler o arquivo.
+            nome_arquivo = os.path.basename(caminho_asset)
+            caminho_real = os.path.join(app.user_data_dir, nome_arquivo)
+            
+            # Se o arquivo ainda não foi extraído, vamos fazer isso agora
+            if not os.path.exists(caminho_real):
                 try:
-                    os.chmod(caminho, 0o644)
-                except: pass
-
+                    # O Kivy abre arquivos dentro do APK de forma transparente com o open()
+                    with open(caminho_asset, 'rb') as f_in:
+                        with open(caminho_real, 'wb') as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+                except Exception as e:
+                    print(f"Erro ao extrair vídeo: {e}")
+            
+            # Agora damos o play no arquivo real (fora do APK)
             player = VideoPlayer(
-                source=caminho,
-                state='stop', # Começa parado para carregar a textura
+                source=caminho_real,
+                state='play',
                 options={'eos': 'loop'}
             )
             
@@ -266,11 +273,6 @@ class TelaTreino(MDScreen):
                 background_color=(0, 0, 0, 0.95)
             )
             
-            # Pequeno atraso para dar o play apenas após o popup estar visível
-            def _start(*args):
-                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 0.3)
-
-            popup.bind(on_open=_start)
             popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
             popup.open()
             
