@@ -202,23 +202,36 @@ def _sessoes_historico(atividade, historico_pesos):
     return sessoes
 
 
+def _safe_json(val, default):
+    """Lê JSON de forma segura, tratando nulos ou erros de formato."""
+    if not val or not isinstance(val, str):
+        return default
+    try:
+        return json.loads(val)
+    except:
+        return default
+
 def _carregar_cliente(cliente_id):
     snap = _doc(cliente_id).get()
     if not snap.exists:
         return None
     d = snap.to_dict()
-    treinos         = json.loads(d.get('treinos', '{}'))
-    atividade       = json.loads(d.get('atividade', '[]'))
-    historico_pesos = json.loads(d.get('historico', '{}'))
+    
+    # Uso de leitura segura para evitar Erro 500 com valores nulos
+    treinos         = _safe_json(d.get('treinos'), {})
+    atividade       = _safe_json(d.get('atividade'), [])
+    historico_pesos = _safe_json(d.get('historico'), {})
     obs_cliente     = d.get('obs_cliente', {})
     if not isinstance(obs_cliente, dict):
         obs_cliente = {}
-    treinos_nomes   = json.loads(d.get('treinos_nomes', '{}'))
+    treinos_nomes   = _safe_json(d.get('treinos_nomes'), {})
 
     # Mescla obs do cliente nos exercícios pelo ex_id
     for exercicios in treinos.values():
-        for ex in exercicios:
-            ex['obs'] = obs_cliente.get(ex.get('id', ''), '') if isinstance(obs_cliente, dict) else ''
+        if isinstance(exercicios, list):
+            for ex in exercicios:
+                if isinstance(ex, dict):
+                    ex['obs'] = obs_cliente.get(ex.get('id', ''), '')
 
     treino_atual_manual = d.get('treino_atual', '')
     proximo = treino_atual_manual if treino_atual_manual in treinos else _proximo_treino(treinos, atividade)
