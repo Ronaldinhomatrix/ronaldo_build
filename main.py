@@ -9,8 +9,14 @@ from datetime import datetime
 if py_platform.system() == 'Windows':
     os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
-# Forçar player nativo no Android para resolver fundo cinza
+from kivy.clock import Clock
+from kivy.core.text import LabelBase
+from kivy.uix.screenmanager import ScreenManager, SlideTransition
+from kivymd.app import MDApp
+from kivy.uix.label import Label
 from kivy.utils import platform as kivy_platform
+
+# Forçar player nativo no Android para resolver fundo cinza logo no início
 if kivy_platform == 'android':
     os.environ['KIVY_VIDEO'] = 'android'
 

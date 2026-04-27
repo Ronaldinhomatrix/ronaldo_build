@@ -289,30 +289,41 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    docs = _col().stream()
+    if db is None:
+        return "Erro: O servidor não conseguiu se conectar ao banco de dados. Verifique a variável FIREBASE_SA_JSON no Render.", 500
+    
+    try:
+        docs = _col().stream()
+    except Exception as e:
+        return f"Erro ao acessar o banco de dados: {e}", 500
+
     clientes = []
     for d in docs:
-        data = d.to_dict()
-        obs = data.get('obs_cliente', {})
-        
-        # Garante que 'obs' seja sempre um dicionário
-        if not isinstance(obs, dict):
-            obs = {}
-        
-        # Conta quantas chaves têm observação não vazia, protegendo contra tipos estranhos
-        tem_obs = False
-        if obs:
-            try:
-                tem_obs = any(str(v).strip() for v in obs.values() if v)
-            except:
-                tem_obs = False
-        
-        clientes.append({
-            'id':            d.id,
-            'nome':          data.get('nome', '(sem nome)'),
-            'data_admissao': data.get('data_admissao', ''),
-            'tem_obs':       tem_obs
-        })
+        try:
+            data = d.to_dict()
+            obs = data.get('obs_cliente', {})
+            
+            # Garante que 'obs' seja sempre um dicionário
+            if not isinstance(obs, dict):
+                obs = {}
+            
+            # Conta quantas chaves têm observação não vazia, protegendo contra tipos estranhos
+            tem_obs = False
+            if obs:
+                try:
+                    tem_obs = any(str(v).strip() for v in obs.values() if v)
+                except:
+                    tem_obs = False
+            
+            clientes.append({
+                'id':            d.id,
+                'nome':          data.get('nome', '(sem nome)'),
+                'data_admissao': data.get('data_admissao', ''),
+                'tem_obs':       tem_obs
+            })
+        except Exception as e:
+            print(f"Erro ao processar cliente {d.id}: {e}")
+            continue
 
     clientes.sort(key=lambda c: c['nome'])
     return render_template('index.html', clientes=clientes)
