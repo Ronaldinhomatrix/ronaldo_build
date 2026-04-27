@@ -1,12 +1,12 @@
 import os
-import platform
+import platform as py_platform
 import json
 import threading
 import uuid
 from datetime import datetime
 
 # Configurações de Ambiente
-if platform.system() == 'Windows':
+if py_platform.system() == 'Windows':
     os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
 
 from kivy.clock import Clock
@@ -14,9 +14,10 @@ from kivy.core.text import LabelBase
 from kivy.uix.screenmanager import ScreenManager, SlideTransition
 from kivymd.app import MDApp
 from kivy.uix.label import Label
+from kivy.utils import platform as kivy_platform
 
 def _pasta_downloads():
-    if platform.system() == 'Android':
+    if kivy_platform == 'android':
         return '/storage/emulated/0/Download'
     return os.path.join(os.path.expanduser('~'), 'Downloads')
 
