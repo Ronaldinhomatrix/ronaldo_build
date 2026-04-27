@@ -16,21 +16,36 @@ import io
 from flask import Flask, redirect, render_template, request, send_file, session, url_for, make_response
 
 # ── Firebase Admin ────────────────────────────────────────────────────────────
-# Em produção: variável de ambiente FIREBASE_SA_JSON com o conteúdo do serviceAccount.json
-# Em desenvolvimento local: arquivo ../serviceAccount.json
-
 _sa_json = os.environ.get('FIREBASE_SA_JSON')
 if _sa_json:
-    cred = credentials.Certificate(json.loads(_sa_json))
+    try:
+        # Tenta carregar o JSON da variável de ambiente
+        info = json.loads(_sa_json)
+        cred = credentials.Certificate(info)
+    except Exception as e:
+        print(f"Erro ao carregar FIREBASE_SA_JSON: {e}")
+        # Fallback para arquivo local se a variável falhar
+        _sa_path = os.path.join(os.path.dirname(__file__), '..', 'serviceAccount.json')
+        cred = credentials.Certificate(os.path.abspath(_sa_path))
 else:
+    # Se não houver variável, usa o arquivo local
     _sa_path = os.path.join(os.path.dirname(__file__), '..', 'serviceAccount.json')
-    cred = credentials.Certificate(os.path.abspath(_sa_path))
+    if os.path.exists(_sa_path):
+        cred = credentials.Certificate(os.path.abspath(_sa_path))
+    else:
+        # Se não tem variável nem arquivo, o app vai falhar, mas vamos imprimir o erro
+        print("ERRO: Nenhuma credencial do Firebase encontrada (Variável ou Arquivo).")
+        cred = None
 
-try:
-    firebase_admin.get_app()
-except ValueError:
-    firebase_admin.initialize_app(cred)
-db = firestore.client()
+if cred:
+    try:
+        firebase_admin.get_app()
+    except ValueError:
+        firebase_admin.initialize_app(cred)
+    db = firestore.client()
+else:
+    db = None
+
 
 # ── Flask ─────────────────────────────────────────────────────────────────────
 
