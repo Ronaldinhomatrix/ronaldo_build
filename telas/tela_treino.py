@@ -29,13 +29,19 @@ class CardExercicio(MDCard):
     @staticmethod
     def _caminho_video(nome):
         # Normalização rigorosa para encontrar o arquivo
+        # 1. Remove acentos
         sem_acento = unicodedata.normalize('NFD', nome)
         sem_acento = ''.join(c for c in sem_acento if unicodedata.category(c) != 'Mn')
-        arquivo = sem_acento.lower().strip().replace(' ', '_') + '.mp4'
+        
+        # 2. Converte para minúsculas e remove caracteres indesejados (como º)
+        import re
+        arquivo = sem_acento.lower().strip()
+        arquivo = re.sub(r'[^a-z0-9\s_]', '', arquivo) # Mantém apenas letras, números e espaços
+        
+        # 3. Substitui espaços por underline
+        arquivo = arquivo.replace(' ', '_') + '.mp4'
         
         # Em Android, caminhos dentro do APK devem ser acessados via prefixo especial
-        # ou copiados para uma área acessível. O VideoPlayer do Kivy no Android 
-        # costuma falhar ao abrir caminhos relativos de assets diretamente.
         if platform.system() == 'Android':
             return f"assets/videos/{arquivo}"
 
@@ -317,7 +323,15 @@ class TelaTreino(MDScreen):
             popup.open()
             
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir vídeo.\nArquivo: {nome_arquivo if 'nome_arquivo' in locals() else '?'}\nErro: {e}").open()
+            # Se falhar a cópia, tenta abrir direto do asset como último recurso
+            try:
+                caminho_fallback = CardExercicio._caminho_video(ex.get('nome', ''))
+                player = VideoPlayer(source=caminho_fallback, state='play', options={'eos': 'loop'})
+                popup = Popup(title=ex['nome'], content=player, size_hint=(0.95, 0.8), background_color=(0, 0, 0, 0.95))
+                popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
+                popup.open()
+            except:
+                MDDialog(text=f"Erro ao abrir vídeo.\nErro: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
