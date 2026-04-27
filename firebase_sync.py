@@ -128,12 +128,13 @@ def criar_cliente(cliente_id, nome):
     threading.Thread(target=_run, daemon=True).start()
 
 
-def salvar_dados(cliente_id, historico, atividade, obs_cliente=None):
+def salvar_dados(cliente_id, historico, atividade, obs_cliente=None, on_success=None, on_error=None):
     """
     Envia historico, atividade e obs do cliente ao Firestore (background).
     NÃO envia treinos — treinos são controlados exclusivamente pelo painel.
     """
     def _run():
+        from kivy.clock import Clock
         try:
             fields = {
                 'historico':      _para_fs(json.dumps(historico, ensure_ascii=False)),
@@ -143,8 +144,12 @@ def salvar_dados(cliente_id, historico, atividade, obs_cliente=None):
             if obs_cliente is not None:
                 fields['obs_cliente'] = _para_fs(obs_cliente)
             _patch(f'atletas/{cliente_id}', fields)
+            if on_success:
+                Clock.schedule_once(lambda dt: on_success(), 0)
         except Exception as e:
             print(f'[Firebase] salvar_dados: {e}')
+            if on_error:
+                Clock.schedule_once(lambda dt: on_error(str(e)), 0)
     threading.Thread(target=_run, daemon=True).start()
 
 

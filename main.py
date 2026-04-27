@@ -65,10 +65,8 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             from telas.tela_treino import TelaTreino
             from telas.tela_historico import TelaHistorico
             from telas.tela_atividade import TelaAtividade
-            from telas.tela_download import TelaDownload, videos_prontos
 
             self.sm = ScreenManager(transition=SlideTransition())
-            self.sm.add_widget(TelaDownload(name='download'))
             self.sm.add_widget(TelaCadastro(name='cadastro'))
             self.sm.add_widget(TelaHome(name='home'))
             self.sm.add_widget(TelaTreino(name='treino'))
@@ -111,7 +109,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         except: pass
         return None
 
-    def salvar(self, treino=None, exercicios_concluidos=None):
+    def salvar(self, treino=None, exercicios_concluidos=None, on_success=None, on_error=None):
         agora = datetime.now()
         data_str = agora.strftime('%d/%m/%Y')
         hora_str = agora.strftime('%H:%M:%S')
@@ -142,10 +140,19 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             if self.cliente:
                 import firebase_sync
                 # Salva atividade e histórico
-                threading.Thread(target=firebase_sync.salvar_dados, 
-                               args=(self.cliente['id'], self.historico, self.atividade, None),
-                               daemon=True).start()
-        except: pass
+                firebase_sync.salvar_dados(
+                    self.cliente['id'], 
+                    self.historico, 
+                    self.atividade, 
+                    None,
+                    on_success=on_success,
+                    on_error=on_error
+                )
+            elif on_success:
+                on_success()
+        except Exception as e:
+            if on_error:
+                on_error(str(e))
 
     def _puxar_treinos_firebase(self):
         try:

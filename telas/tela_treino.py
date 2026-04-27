@@ -33,7 +33,12 @@ class CardExercicio(MDCard):
         sem_acento = ''.join(c for c in sem_acento if unicodedata.category(c) != 'Mn')
         arquivo = sem_acento.lower().strip().replace(' ', '_') + '.mp4'
         
-        # Agora buscamos exclusivamente dentro dos assets do APK
+        # Em Android, caminhos dentro do APK devem ser acessados via prefixo especial
+        # ou copiados para uma área acessível. O VideoPlayer do Kivy no Android 
+        # costuma falhar ao abrir caminhos relativos de assets diretamente.
+        if platform.system() == 'Android':
+            return f"assets/videos/{arquivo}"
+
         return os.path.join('assets', 'videos', arquivo)
 
     def __init__(self, ex, tela, **kwargs):
@@ -177,10 +182,34 @@ class TelaTreino(MDScreen):
     def _executar_conclusao(self, dlg):
         dlg.dismiss()
         app = MDApp.get_running_app()
-        for card in self._cards: card.ex['obs'] = ""
-        app.salvar(treino=self.treino_atual, exercicios_concluidos=[c.ex for c in self._cards])
+        
+        # Feedback visual de carregamento
+        self._btn_concluir.text = "Sincronizando com servidor..."
+        self._btn_concluir.disabled = True
+        self._btn_concluir.md_bg_color = (0.5, 0.5, 0.5, 1)
+
+        for card in self._cards: 
+            card.ex['obs'] = ""
+            
+        app.salvar(
+            treino=self.treino_atual, 
+            exercicios_concluidos=[c.ex for c in self._cards],
+            on_success=self._on_conclusao_sucesso,
+            on_error=self._on_conclusao_erro
+        )
+
+    def _on_conclusao_sucesso(self):
+        app = MDApp.get_running_app()
         app.progresso_treino = {}
         app.sm.current = 'home'
+        # Reset para o estado original caso volte à tela
+        self._btn_concluir.disabled = False
+
+    def _on_conclusao_erro(self, erro):
+        self._btn_concluir.text = "Erro ao sincronizar. Tentar novamente?"
+        self._btn_concluir.disabled = False
+        self._btn_concluir.md_bg_color = (0.8, 0.1, 0.1, 1)
+        MDDialog(text=f"Não foi possível sincronizar com o servidor.\nVerifique sua internet.\n\nErro: {erro}").open()
 
     def _editar_obs(self, ex, card):
         campo = MDTextField(text=ex.get('obs', ''), hint_text='Observação sobre o exercício', mode='rectangle', multiline=True, size_hint_y=None, height=dp(80))
@@ -237,15 +266,42 @@ class TelaTreino(MDScreen):
         card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1)
 
     def _ver_midia(self, ex):
+        caminho_final = ""
         try:
             from kivy.uix.videoplayer import VideoPlayer
-            caminho = CardExercicio._caminho_video(ex.get('nome', ''))
+            from kivy.utils import platform as kivy_plat
+            import shutil
             
-            # SOLUÇÃO FINAL: Leitura direta do vídeo embutido no APK
-            # Como agora os vídeos são H.264 Originais, o Kivy consegue ler
-            # diretamente sem precisar copiar arquivos ou pedir permissão.
+            caminho_original = CardExercicio._caminho_video(ex.get('nome', ''))
+            nome_arquivo = os.path.basename(caminho_original)
+            
+            # No Android, o VideoPlayer nativo do Kivy muitas vezes não consegue abrir 
+            # arquivos diretamente de dentro do APK. Precisamos extrair para o cache.
+            if kivy_plat == 'android':
+                # Caminho seguro no Android para arquivos temporários
+                from jnius import autoclass
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                activity = PythonActivity.mActivity
+                cache_dir = activity.getCacheDir().getAbsolutePath()
+                
+                video_cache = os.path.join(cache_dir, 'video_cache')
+                if not os.path.exists(video_cache):
+                    os.makedirs(video_cache)
+                
+                caminho_final = os.path.join(video_cache, nome_arquivo)
+                
+                # Extração do Asset (via p4a/kivy loader)
+                if not os.path.exists(caminho_final):
+                    # No Android, assets estão no APK. Usamos o open do python 
+                    # que o p4a sobrecarrega para ler do APK.
+                    with open(os.path.join('assets', 'videos', nome_arquivo), 'rb') as f_in:
+                        with open(caminho_final, 'wb') as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+            else:
+                caminho_final = caminho_original
+
             player = VideoPlayer(
-                source=caminho,
+                source=caminho_final,
                 state='play',
                 options={'eos': 'loop'}
             )
@@ -261,7 +317,7 @@ class TelaTreino(MDScreen):
             popup.open()
             
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir vídeo.\nErro: {e}").open()
+            MDDialog(text=f"Erro ao abrir vídeo.\nArquivo: {nome_arquivo if 'nome_arquivo' in locals() else '?'}\nErro: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
