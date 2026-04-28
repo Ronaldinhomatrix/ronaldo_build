@@ -1,5 +1,6 @@
 """
 Painel web do treinador — Ronaldo Medeiros Fisiologista
+Versão: 3.1 - Proteção de Dados Radical
 Roda localmente: python painel/app.py
 """
 import csv
@@ -289,6 +290,7 @@ def logout():
 @app.route('/')
 @login_required
 def index():
+    print("DEBUG: Entrou na rota index v3.1")
     if db is None:
         return "Erro: O servidor não conseguiu se conectar ao banco de dados. Verifique a variável FIREBASE_SA_JSON no Render.", 500
     

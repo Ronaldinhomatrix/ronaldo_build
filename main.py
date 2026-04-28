@@ -16,10 +16,9 @@ from kivymd.app import MDApp
 from kivy.uix.label import Label
 from kivy.utils import platform as kivy_platform
 
-# Forçar player nativo no Android para resolver fundo cinza logo no início
+# Forçar player nativo no Android para resolver fundo cinza
 if kivy_platform == 'android':
     os.environ['KIVY_VIDEO'] = 'android'
-
 
 def _pasta_downloads():
     if kivy_platform == 'android':
@@ -33,11 +32,9 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.theme_cls.primary_palette = 'BlueGray'
             self.theme_cls.theme_style = 'Dark'
 
-            # Define o diretório de dados apenas quando o app está pronto
             self.data_dir = self.user_data_dir
             os.makedirs(self.data_dir, exist_ok=True)
             
-            # Inicializa caminhos
             self.treinos_file       = os.path.join(self.data_dir, 'treinos.json')
             self.treinos_nomes_file = os.path.join(self.data_dir, 'treinos_nomes.json')
             self.historico_file     = os.path.join(self.data_dir, 'historico.json')
@@ -46,7 +43,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.sync_file          = os.path.join(self.data_dir, 'ultima_sync.json')
             self._CLIENTE_BACKUP    = os.path.join(_pasta_downloads(), 'ronaldo_cliente_backup.json')
 
-            # Registro de Fonte (Silencioso se falhar)
             try:
                 font_path = os.path.join(os.path.dirname(__file__), 'assets', 'fonts', 'ERASBD.TTF')
                 if os.path.exists(font_path):
@@ -57,14 +53,12 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.treino_atual     = ''
             self.progresso_treino = {}
             
-            # Carregamento de dados (Seguro)
             self.cliente       = self._carregar(self.cliente_file, None) or self._recuperar_cliente_downloads()
             self.treinos       = self._carregar(self.treinos_file,       {})
             self.treinos_nomes = self._carregar(self.treinos_nomes_file, {})
             self.historico     = self._carregar(self.historico_file,     {})
             self.atividade     = self._carregar(self.atividade_file,     [])
 
-            # Importação tardia das telas para evitar crash no loading pesado
             from telas.tela_cadastro import TelaCadastro
             from telas.tela_home import TelaHome
             from telas.tela_treino import TelaTreino
@@ -78,7 +72,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.sm.add_widget(TelaHistorico(name='historico'))
             self.sm.add_widget(TelaAtividade(name='atividade'))
 
-            # Decisão de tela inicial
             if self.cliente:
                 self.sm.current = 'home'
             else:
@@ -87,7 +80,6 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             return self.sm
 
         except Exception as e:
-            # Em caso de erro grave, mostra uma tela branca com o erro
             return Label(text=f"Erro de Inicializacao:\n{str(e)}", color=(1,0,0,1))
 
     def on_start(self):
@@ -144,20 +136,14 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             
             if self.cliente:
                 import firebase_sync
-                # Salva atividade e histórico
                 firebase_sync.salvar_dados(
-                    self.cliente['id'], 
-                    self.historico, 
-                    self.atividade, 
-                    None,
-                    on_success=on_success,
-                    on_error=on_error
+                    self.cliente['id'], self.historico, self.atividade, None,
+                    on_success=on_success, on_error=on_error
                 )
             elif on_success:
                 on_success()
         except Exception as e:
-            if on_error:
-                on_error(str(e))
+            if on_error: on_error(str(e))
 
     def _puxar_treinos_firebase(self):
         try:
