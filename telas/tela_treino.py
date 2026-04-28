@@ -2,6 +2,7 @@ import os
 import unicodedata
 import platform
 import threading
+import re
 
 from kivy.clock import Clock
 from kivy.core.window import Window
