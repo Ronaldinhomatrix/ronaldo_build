@@ -301,17 +301,20 @@ def index():
     for d in docs:
         try:
             data = d.to_dict()
-            obs = data.get('obs_cliente', {})
-            
-            # Garante que 'obs' seja sempre um dicionário
-            if not isinstance(obs, dict):
+            # PROTEÇÃO RADICAL: Garante que 'obs' venha de um campo que seja dicionário
+            obs_raw = data.get('obs_cliente')
+            if isinstance(obs_raw, dict):
+                obs = obs_raw
+            else:
                 obs = {}
             
             # Conta quantas chaves têm observação não vazia, protegendo contra tipos estranhos
             tem_obs = False
             if obs:
                 try:
-                    tem_obs = any(str(v).strip() for v in obs.values() if v)
+                    # Só tenta iterar se tiver o método 'values' (certeza de ser dict)
+                    if hasattr(obs, 'values'):
+                        tem_obs = any(str(v).strip() for v in obs.values() if v)
                 except:
                     tem_obs = False
             
