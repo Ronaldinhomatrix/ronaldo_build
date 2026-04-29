@@ -23,3 +23,8 @@ firebase_config.py
 
 # Instalador
 Instalador/
+
+# Assinatura do App (Segurança)
+keystore/
+*.jks
+*.keystore
