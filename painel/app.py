@@ -1,6 +1,6 @@
 """
 Painel web do treinador — Ronaldo Medeiros Fisiologista
-Versão: 3.2 - Proteção Total e Blindagem
+Versão: 3.3 - Restauração Completa de Rotas
 """
 import csv
 import json
@@ -52,12 +52,34 @@ def login_required(f):
 def _col(): return db.collection('atletas')
 def _doc(cid): return _col().document(cid)
 def _col_banco(): return db.collection('exercicios')
+def _col_banco_treinos(): return db.collection('banco_treinos')
 
 def _safe_json(val, default):
     if not val: return default
     if isinstance(val, (dict, list)): return val
     try: return json.loads(val)
     except: return default
+
+_CATEGORIAS_PADRAO = ['Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Pernas', 'Glúteos', 'Abdômen', 'Cardio', 'Outros']
+
+def _carregar_categorias():
+    try:
+        snap = db.collection('config').document('categorias').get()
+        custom = snap.to_dict().get('lista', []) if snap.exists else []
+        return list(dict.fromkeys(_CATEGORIAS_PADRAO + custom))
+    except: return _CATEGORIAS_PADRAO
+
+def _carregar_banco():
+    return [{'id': d.id, **d.to_dict()} for d in _col_banco().order_by('nome').stream()]
+
+def _carregar_banco_treinos():
+    return [{'id': d.id, 'nome': d.to_dict().get('nome', ''), 'exercicios': _safe_json(d.to_dict().get('exercicios'), [])} for d in _col_banco_treinos().order_by('nome').stream()]
+
+def _carregar_template(template_id):
+    snap = _col_banco_treinos().document(template_id).get()
+    if not snap.exists: return None
+    d = snap.to_dict()
+    return {'id': template_id, 'nome': d.get('nome', ''), 'exercicios': _safe_json(d.get('exercicios'), [])}
 
 def _carregar_cliente(cliente_id):
     snap = _doc(cliente_id).get()
@@ -69,7 +91,6 @@ def _carregar_cliente(cliente_id):
     obs_cliente = d.get('obs_cliente', {})
     if not isinstance(obs_cliente, dict): obs_cliente = {}
     
-    # Proteção para o loop de treinos
     if isinstance(treinos, dict):
         for exercicios in treinos.values():
             if isinstance(exercicios, list):
@@ -111,6 +132,8 @@ def _sessoes_historico(atividade, historico_pesos):
         sessoes.append({'data': data, 'treino': treino, 'exercicios': exs})
     return sessoes
 
+# ── Rotas ─────────────────────────────────────────────────────────────────────
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     erro = None
@@ -150,14 +173,76 @@ def index():
     except Exception as e:
         return f"Erro ao carregar lista: {e}", 500
 
+@app.route('/exercicios')
+@login_required
+def banco_exercicios():
+    exercicios = _carregar_banco()
+    categorias = _carregar_categorias()
+    return render_template('exercicios.html', exercicios=exercicios, categorias=categorias, filtro_cat='')
+
 @app.route('/cliente/<cliente_id>')
 @login_required
 def ver_cliente(cliente_id):
     cliente = _carregar_cliente(cliente_id)
     if not cliente: return 'Cliente não encontrado.', 404
-    return render_template('atleta.html', cliente=cliente, banco=[], banco_treinos=[], categorias=[])
+    banco = _carregar_banco()
+    banco_treinos = _carregar_banco_treinos()
+    categorias = _carregar_categorias()
+    return render_template('atleta.html', cliente=cliente, banco=banco, banco_treinos=banco_treinos, categorias=categorias)
 
-# ... (restante das rotas simplificadas para manter o site vivo)
+@app.route('/cliente/<cliente_id>/exercicio/add', methods=['POST'])
+@login_required
+def add_exercicio(cliente_id):
+    treino = request.form['treino']
+    nome = request.form.get('nome', '').strip()
+    if not nome: return redirect(url_for('ver_cliente', cliente_id=cliente_id))
+    cliente = _carregar_cliente(cliente_id)
+    ex = {
+        'id': str(uuid.uuid4())[:8], 
+        'nome': nome, 
+        'series': request.form.get('series', ''),
+        'repeticoes': request.form.get('repeticoes', ''), 
+        'peso': request.form.get('peso', ''),
+        'obs_trainer': request.form.get('obs_trainer', '').strip()
+    }
+    cliente['treinos'].setdefault(treino, []).append(ex)
+    _doc(cliente_id).update({'treinos': json.dumps(cliente['treinos'], ensure_ascii=False), 'trainer_editou': True})
+    return redirect(url_for('ver_cliente', cliente_id=cliente_id))
+
+@app.route('/cliente/<cliente_id>/exercicio/remove', methods=['POST'])
+@login_required
+def remove_exercicio(cliente_id):
+    treino = request.form['treino']
+    ex_id = request.form['ex_id']
+    cliente = _carregar_cliente(cliente_id)
+    cliente['treinos'][treino] = [e for e in cliente['treinos'].get(treino, []) if e['id'] != ex_id]
+    _doc(cliente_id).update({'treinos': json.dumps(cliente['treinos'], ensure_ascii=False), 'trainer_editou': True})
+    return redirect(url_for('ver_cliente', cliente_id=cliente_id))
+
+@app.route('/banco-treinos')
+@login_required
+def banco_treinos():
+    templates = _carregar_banco_treinos()
+    return render_template('banco_treinos.html', templates=templates)
+
+@app.route('/notificar-obs', methods=['POST'])
+def notificar_obs():
+    token = os.environ.get('NOTIF_TOKEN', 'notif2024!')
+    if request.headers.get('X-Token') != token: return 'Não autorizado.', 403
+    dados = request.get_json(silent=True) or {}
+    _enviar_telegram_obs(dados.get('cliente_nome', 'Cliente'), dados.get('ex_nome', 'exercício'), dados.get('obs', ''))
+    return 'ok', 200
+
+def _enviar_telegram_obs(cliente, ex, obs):
+    token = os.environ.get('TELEGRAM_TOKEN', '')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
+    if not token or not chat_id: return
+    import urllib.request as _req
+    texto = f'📋 Nova observação\nCliente: {cliente}\nExercício: {ex}\nObs: {obs}'
+    body = json.dumps({'chat_id': chat_id, 'text': texto}).encode('utf-8')
+    req = _req.Request(f'https://api.telegram.org/bot{token}/sendMessage', data=body, headers={'Content-Type': 'application/json'})
+    try: _req.urlopen(req, timeout=15)
+    except: pass
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
