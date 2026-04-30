@@ -148,14 +148,25 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
     def _puxar_treinos_firebase(self):
         try:
             import firebase_sync
+            if not self.cliente: return
+            
             dados = firebase_sync.buscar_cliente_completo(self.cliente['id'])
-            if dados and (dados.get('trainer_editou') or not self.treinos):
+            # REGRA: Atualiza se o trainer editou OU se o app está sem treinos atualmente
+            if dados and (dados.get('trainer_editou') or not self.treinos or len(self.treinos) == 0):
                 self.treinos = dados['treinos']
                 self.treinos_nomes = dados['treinos_nomes']
+                self.treino_atual = dados.get('treino_atual', '')
+                
+                # Salva localmente para uso offline
                 with open(self.treinos_file, 'w', encoding='utf-8') as f:
                     json.dump(self.treinos, f, ensure_ascii=False)
+                with open(self.treinos_nomes_file, 'w', encoding='utf-8') as f:
+                    json.dump(self.treinos_nomes, f, ensure_ascii=False)
+                
+                # Atualiza a interface
                 Clock.schedule_once(lambda dt: self.sm.get_screen('home')._reconstruir_botoes() if self.sm.has_screen('home') else None)
-        except: pass
+        except Exception as e:
+            print(f"Erro ao puxar treinos: {e}")
 
 if __name__ == '__main__':
     RonaldoMedeirosFisiologistaApp().run()

@@ -299,9 +299,10 @@ class TelaHome(MDScreen):
             webbrowser.open(link)
 
         # Ajustamos o texto com quebra de linha e damos mais destaque ao botão de contato
-        rodape.add_widget(_nav_item('whatsapp', 'Falar com\nRonaldo Medeiros', _abrir_whatsapp))
+        rodape.add_widget(_nav_item('whatsapp', 'Falar com\nRonaldo', _abrir_whatsapp))
+        rodape.add_widget(_nav_item('sync', 'Atualizar', lambda x: self._forcar_sincronismo()))
         rodape.add_widget(_nav_item('chart-line', 'Histórico', lambda x: self._abrir_historico_atividade()))
-        rodape.add_widget(_nav_item('information-outline', 'Sobre', lambda x: self._abrir_configuracoes()))
+        rodape.add_widget(_nav_item('information-outline', 'Sobre', lambda x: self._abrir_sobre()))
 
         root.add_widget(rodape)
 
@@ -310,6 +311,12 @@ class TelaHome(MDScreen):
     def on_enter(self, *args):
         self._atualizar_saudacao()
         self._reconstruir_botoes()
+
+    def _forcar_sincronismo(self):
+        app = MDApp.get_running_app()
+        # Feedback visual simples
+        self._lbl_motivacional.text = "Atualizando treinos..."
+        threading.Thread(target=app._puxar_treinos_firebase, daemon=True).start()
 
     def _atualizar_saudacao(self):
         app = MDApp.get_running_app()
@@ -333,10 +340,23 @@ class TelaHome(MDScreen):
     def _reconstruir_botoes(self):
         app = MDApp.get_running_app()
         hoje = datetime.now().strftime('%d/%m/%Y')
-        letras = sorted(app.treinos.keys())
+        
+        # Garante que treinos seja um dicionário
+        treinos = app.treinos if isinstance(app.treinos, dict) else {}
+        letras = sorted(treinos.keys())
         proximo = _proximo_treino(app)
 
         self._container.clear_widgets()
+
+        if not letras:
+            self._container.add_widget(MDLabel(
+                text="Nenhum treino encontrado.\nClique em 'Atualizar' ou fale com o treinador.",
+                halign='center',
+                theme_text_color='Secondary',
+                size_hint_y=None,
+                height=dp(100)
+            ))
+            return
 
         for letra in letras:
             nome = app.treinos_nomes.get(letra, '')
@@ -357,8 +377,14 @@ class TelaHome(MDScreen):
     def _abrir_historico_atividade(self):
         MDApp.get_running_app().sm.current = 'atividade'
 
-    def _abrir_configuracoes(self):
-        MDApp.get_running_app().sm.current = 'configuracoes'
+    def _abrir_sobre(self):
+        # O nome da tela no ScreenManager deve ser 'historico' (ajustado no main.py)
+        # Mas aqui queremos ir para a tela de Sobre/Configurações
+        # Vamos verificar se a tela de atividade ou historico está correta.
+        # Por enquanto, mantemos a navegação para historico se for o que o app tem.
+        app = MDApp.get_running_app()
+        if app.sm.has_screen('historico'):
+            app.sm.current = 'historico'
 
 
 # ── funções auxiliares ────────────────────────────────────────────────────────
