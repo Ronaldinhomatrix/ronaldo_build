@@ -1,6 +1,6 @@
 """
 Sincronização com o Firebase Firestore via REST API.
-Todas as chamadas de rede rodam em threads de background — o app nunca trava.
+Versão: 2.0 - Robusta para tipos de dados variados.
 """
 import json
 import ssl
@@ -17,249 +17,128 @@ try:
 except Exception:
     _SSL_CONTEXT = ssl.create_default_context()
 
-_BASE = (
-    f'https://firestore.googleapis.com/v1/'
-    f'projects/{PROJECT_ID}/databases/(default)/documents'
-)
+_BASE = f'https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents'
 
-
-# ── conversão Python ↔ Firestore ──────────────────────────────────────────────
-
-def _para_fs(valor):
-    if isinstance(valor, bool):
-        return {'booleanValue': valor}
-    if isinstance(valor, int):
-        return {'integerValue': str(valor)}
-    if isinstance(valor, float):
-        return {'doubleValue': valor}
-    if isinstance(valor, str):
-        return {'stringValue': valor}
-    if isinstance(valor, dict):
-        return {'mapValue': {'fields': {k: _para_fs(v) for k, v in valor.items()}}}
-    if isinstance(valor, list):
-        return {'arrayValue': {'values': [_para_fs(v) for v in valor]}}
-    return {'nullValue': None}
-
+# ── Conversão Robusta ────────────────────────────────────────────────────────
 
 def _de_fs(fv):
+    """Converte valores do formato Firestore para Python (robusto)."""
+    if not fv or not isinstance(fv, dict): return None
     if 'stringValue'  in fv: return fv['stringValue']
     if 'booleanValue' in fv: return fv['booleanValue']
     if 'integerValue' in fv: return int(fv['integerValue'])
     if 'doubleValue'  in fv: return fv['doubleValue']
-    if 'nullValue'    in fv: return None
     if 'mapValue'     in fv:
         return {k: _de_fs(v) for k, v in fv['mapValue'].get('fields', {}).items()}
     if 'arrayValue'   in fv:
         return [_de_fs(v) for v in fv['arrayValue'].get('values', [])]
     return None
 
+def _para_fs(valor):
+    """Converte Python para formato Firestore."""
+    if isinstance(valor, bool): return {'booleanValue': valor}
+    if isinstance(valor, int): return {'integerValue': str(valor)}
+    if isinstance(valor, float): return {'doubleValue': valor}
+    if isinstance(valor, str): return {'stringValue': valor}
+    if isinstance(valor, dict): return {'mapValue': {'fields': {k: _para_fs(v) for k, v in valor.items()}}}
+    if isinstance(valor, list): return {'arrayValue': {'values': [_para_fs(v) for v in valor]}}
+    return {'nullValue': None}
 
-# ── helpers HTTP ──────────────────────────────────────────────────────────────
+# ── API Pública ───────────────────────────────────────────────────────────────
 
-def _patch(path, fields):
-    """PATCH com updateMask — atualiza apenas os campos informados."""
-    mask = '&'.join(f'updateMask.fieldPaths={k}' for k in fields)
-    url  = f'{_BASE}/{path}?key={API_KEY}&{mask}'
-    body = json.dumps({'fields': fields}).encode('utf-8')
-    req  = urllib.request.Request(url, data=body, method='PATCH')
-    req.add_header('Content-Type', 'application/json')
-    urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT)
-
-
-def _get(path):
-    url = f'{_BASE}/{path}?key={API_KEY}'
-    with urllib.request.urlopen(url, timeout=15, context=_SSL_CONTEXT) as resp:
-        return json.loads(resp.read())
-
-
-def buscar_id_por_nome(nome):
-    """
-    Pesquisa no Firestore se já existe um atleta com este nome.
-    Retorna o ID do documento se encontrar, ou None se for novo.
-    """
+def buscar_cliente_completo(cliente_id):
+    """Busca dados do cliente, aceitando treinos como String JSON ou Mapa Direto."""
     try:
-        # Query via REST API
-        url = f'https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents:runQuery?key={API_KEY}'
-        query = {
-            "structuredQuery": {
-                "from": [{"collectionId": "atletas"}],
-                "where": {
-                    "fieldFilter": {
-                        "field": {"fieldPath": "nome"},
-                        "op": "EQUAL",
-                        "value": {"stringValue": nome}
-                    }
-                },
-                "limit": 1
+        url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}'
+        with urllib.request.urlopen(url, timeout=15, context=_SSL_CONTEXT) as resp:
+            doc = json.loads(resp.read())
+            fields = doc.get('fields', {})
+            
+            # Treinos: pode vir como String (velho) ou Mapa (novo)
+            treinos_raw = _de_fs(fields.get('treinos'))
+            if isinstance(treinos_raw, str): treinos = json.loads(treinos_raw)
+            elif isinstance(treinos_raw, dict): treinos = treinos_raw
+            else: treinos = {}
+
+            # Nomes: mesma lógica
+            nomes_raw = _de_fs(fields.get('treinos_nomes'))
+            if isinstance(nomes_raw, str): nomes = json.loads(nomes_raw)
+            elif isinstance(nomes_raw, dict): nomes = nomes_raw
+            else: nomes = {}
+
+            return {
+                'treinos': treinos,
+                'treinos_nomes': nomes,
+                'trainer_editou': _de_fs(fields.get('trainer_editou')) or False,
+                'pode_editar': _de_fs(fields.get('pode_editar')) if 'pode_editar' in fields else True,
+                'treino_atual': _de_fs(fields.get('treino_atual')) or '',
+                'obs_cliente': _de_fs(fields.get('obs_cliente')) or {},
             }
-        }
-        body = json.dumps(query).encode('utf-8')
-        req = urllib.request.Request(url, data=body, method='POST')
-        req.add_header('Content-Type', 'application/json')
-        
-        with urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT) as resp:
-            resultados = json.loads(resp.read())
-            # O Firestore retorna uma lista. Se o primeiro item tiver um 'document', ele existe.
-            if resultados and 'document' in resultados[0]:
-                path = resultados[0]['document']['name']
-                return path.split('/')[-1] # Retorna apenas o ID (final do caminho)
     except Exception as e:
-        print(f'[Firebase] Erro ao buscar por nome: {e}')
-    return None
-
-
-# ── API pública ───────────────────────────────────────────────────────────────
+        print(f'[Firebase] Erro ao buscar: {e}')
+        return None
 
 def criar_cliente(cliente_id, nome):
-    """Cria o documento do cliente no Firestore (background)."""
     def _run():
         try:
-            _patch(f'atletas/{cliente_id}', {
-                'nome':           _para_fs(nome),
-                'treinos':        _para_fs(json.dumps({}, ensure_ascii=False)),
-                'historico':      _para_fs('{}'),
-                'atividade':      _para_fs('[]'),
-                'obs_cliente':    _para_fs({}),
+            url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}'
+            body = json.dumps({'fields': {
+                'nome': _para_fs(nome),
+                'treinos': _para_fs('{}'),
+                'historico': _para_fs('{}'),
+                'atividade': _para_fs('[]'),
+                'obs_cliente': _para_fs({}),
                 'trainer_editou': _para_fs(False),
-                'data_admissao':  _para_fs(datetime.now().strftime('%d/%m/%Y')),
-            })
-        except Exception as e:
-            print(f'[Firebase] criar_cliente: {e}')
+                'data_admissao': _para_fs(datetime.now().strftime('%d/%m/%Y')),
+            }}).encode('utf-8')
+            req = urllib.request.Request(url, data=body, method='PATCH')
+            req.add_header('Content-Type', 'application/json')
+            urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT)
+        except Exception as e: print(f'[Firebase] Criar: {e}')
     threading.Thread(target=_run, daemon=True).start()
 
-
 def salvar_dados(cliente_id, historico, atividade, obs_cliente=None, on_success=None, on_error=None):
-    """
-    Envia historico, atividade e obs do cliente ao Firestore (background).
-    NÃO envia treinos — treinos são controlados exclusivamente pelo painel.
-    """
     def _run():
         from kivy.clock import Clock
         try:
             fields = {
-                'historico':      _para_fs(json.dumps(historico, ensure_ascii=False)),
-                'atividade':      _para_fs(json.dumps(atividade, ensure_ascii=False)),
+                'historico': _para_fs(json.dumps(historico, ensure_ascii=False)),
+                'atividade': _para_fs(json.dumps(atividade, ensure_ascii=False)),
                 'trainer_editou': _para_fs(False),
             }
-            if obs_cliente is not None:
-                fields['obs_cliente'] = _para_fs(obs_cliente)
-            _patch(f'atletas/{cliente_id}', fields)
-            if on_success:
-                Clock.schedule_once(lambda dt: on_success(), 0)
+            if obs_cliente: fields['obs_cliente'] = _para_fs(obs_cliente)
+            
+            mask = '&'.join(f'updateMask.fieldPaths={k}' for k in fields.keys())
+            url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}&{mask}'
+            req = urllib.request.Request(url, data=json.dumps({'fields': fields}).encode('utf-8'), method='PATCH')
+            req.add_header('Content-Type', 'application/json')
+            urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT)
+            if on_success: Clock.schedule_once(lambda dt: on_success(), 0)
         except Exception as e:
-            print(f'[Firebase] salvar_dados: {e}')
-            if on_error:
-                Clock.schedule_once(lambda dt: on_error(str(e)), 0)
+            if on_error: Clock.schedule_once(lambda dt: on_error(str(e)), 0)
     threading.Thread(target=_run, daemon=True).start()
 
-
-def salvar_atividade(cliente_id, atividade, on_error=None):
-    """
-    Envia apenas o campo 'atividade' ao Firestore (background).
-    Chamado a cada série registrada. Se falhar, chama on_error() para retry posterior.
-    """
-    def _run():
-        try:
-            _patch(f'atletas/{cliente_id}', {
-                'atividade': _para_fs(json.dumps(atividade, ensure_ascii=False)),
-            })
-        except Exception as e:
-            print(f'[Firebase] salvar_atividade: {e}')
-            if on_error:
-                on_error()
-    threading.Thread(target=_run, daemon=True).start()
-
-
-def buscar_cliente_completo(cliente_id):
-    """
-    Busca todos os dados do cliente (síncrono — chame em thread separada).
-    Retorna dict com chaves: treinos, trainer_editou, pode_editar, obs_cliente
-    — ou None em caso de erro.
-    """
+def buscar_id_por_nome(nome):
     try:
-        doc    = _get(f'atletas/{cliente_id}')
-        fields = doc.get('fields', {})
-        treinos_json       = _de_fs(fields.get('treinos',        {'stringValue': '{}'}))
-        treinos_nomes_json = _de_fs(fields.get('treinos_nomes',  {'stringValue': '{}'}))
-        trainer_editou     = _de_fs(fields.get('trainer_editou', {'booleanValue': False}))
-        pode_editar        = _de_fs(fields.get('pode_editar',    {'booleanValue': True}))
-        treino_atual       = _de_fs(fields.get('treino_atual',   {'stringValue': ''}))
-        obs_raw            = fields.get('obs_cliente', {'mapValue': {'fields': {}}})
-        obs_cliente        = _de_fs(obs_raw) or {}
-        return {
-            'treinos':        json.loads(treinos_json),
-            'treinos_nomes':  json.loads(treinos_nomes_json),
-            'trainer_editou': trainer_editou,
-            'pode_editar':    pode_editar,
-            'treino_atual':   treino_atual,
-            'obs_cliente':    obs_cliente,
-        }
-    except Exception as e:
-        print(f'[Firebase] buscar_cliente_completo: {e}')
-        return None
+        url = f'{_BASE}:runQuery?key={API_KEY}'
+        query = {"structuredQuery": {"from": [{"collectionId": "atletas"}], "where": {"fieldFilter": {"field": {"fieldPath": "nome"}, "op": "EQUAL", "value": {"stringValue": nome}}}, "limit": 1}}
+        req = urllib.request.Request(url, data=json.dumps(query).encode('utf-8'), method='POST')
+        req.add_header('Content-Type', 'application/json')
+        with urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT) as resp:
+            res = json.loads(resp.read())
+            if res and 'document' in res[0]: return res[0]['document']['name'].split('/')[-1]
+    except: pass
+    return None
 
-
-def notificar_obs(cliente_nome, ex_nome, obs_texto, on_success=None, on_error=None, retentativas=3):
-    """
-    Avisa o treinador sobre nova observação do cliente (background).
-    Tenta automaticamente 'retentativas' vezes em caso de timeout/erro.
-    """
+def notificar_obs(cliente_nome, ex_nome, obs_texto, on_success=None, on_error=None):
     def _run():
         from kivy.clock import Clock
-        import time
-        
-        for tentativa in range(retentativas):
-            try:
-                from firebase_config import PAINEL_URL, NOTIF_TOKEN
-                url  = f'{PAINEL_URL}/notificar-obs'
-                body = json.dumps({
-                    'cliente_nome': cliente_nome,
-                    'ex_nome':      ex_nome,
-                    'obs':          obs_texto,
-                }).encode('utf-8')
-                req = urllib.request.Request(
-                    url, data=body,
-                    headers={
-                        'Content-Type': 'application/json',
-                        'X-Token':      NOTIF_TOKEN,
-                        'User-Agent':   'RonaldoApp/2.8'
-                    },
-                )
-                # Timeout menor por tentativa para não demorar demais no total
-                urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT)
-                
-                if on_success:
-                    Clock.schedule_once(lambda dt: on_success(), 0)
-                return  # Sucesso! Sai da função.
-
-            except Exception as err:
-                erro_msg = str(err)
-                print(f'[Notif] Tentativa {tentativa + 1} falhou: {erro_msg}')
-                if tentativa < retentativas - 1:
-                    time.sleep(2)
-                else:
-                    if on_error:
-                        # Capturamos erro_msg em uma variável local para o lambda
-                        Clock.schedule_once(lambda dt, m=erro_msg: on_error(m), 0)
-
-    threading.Thread(target=_run, daemon=True).start()
-
-
-def limpar_treino_atual(cliente_id):
-    """Remove o override manual de treino_atual após o cliente concluir aquele treino."""
-    def _run():
         try:
-            _patch(f'atletas/{cliente_id}', {'treino_atual': _para_fs('')})
+            from firebase_config import PAINEL_URL, NOTIF_TOKEN
+            body = json.dumps({'cliente_nome': cliente_nome, 'ex_nome': ex_nome, 'obs': obs_texto}).encode('utf-8')
+            req = urllib.request.Request(f'{PAINEL_URL}/notificar-obs', data=body, headers={'Content-Type': 'application/json', 'X-Token': NOTIF_TOKEN})
+            urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT)
+            if on_success: Clock.schedule_once(lambda dt: on_success(), 0)
         except Exception as e:
-            print(f'[Firebase] limpar_treino_atual: {e}')
-    threading.Thread(target=_run, daemon=True).start()
-
-
-def marcar_trainer_lido(cliente_id):
-    """Reseta trainer_editou=False após o cliente puxar as mudanças (background)."""
-    def _run():
-        try:
-            _patch(f'atletas/{cliente_id}', {'trainer_editou': _para_fs(False)})
-        except Exception as e:
-            print(f'[Firebase] marcar_trainer_lido: {e}')
+            if on_error: Clock.schedule_once(lambda dt: on_error(str(e)), 0)
     threading.Thread(target=_run, daemon=True).start()
