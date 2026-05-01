@@ -93,6 +93,64 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
         if hasattr(self, 'cliente') and self.cliente:
             self._puxar_treinos_firebase()
 
+    def _carregar(self, path, default):
+        try:
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except: pass
+        return default
+
+    def _recuperar_cliente_downloads(self):
+        try:
+            dados = self._carregar(self._CLIENTE_BACKUP, None)
+            if dados and dados.get('id'):
+                cliente = {'id': dados['id'], 'nome': dados['nome']}
+                with open(self.cliente_file, 'w', encoding='utf-8') as f:
+                    json.dump(cliente, f)
+                return cliente
+        except: pass
+        return None
+
+    def salvar(self, treino=None, exercicios_concluidos=None, on_success=None, on_error=None):
+        agora = datetime.now()
+        data_str = agora.strftime('%d/%m/%Y')
+        hora_str = agora.strftime('%H:%M:%S')
+
+        if treino and exercicios_concluidos:
+            for ex in exercicios_concluidos:
+                self.atividade.append({
+                    'data':         data_str,
+                    'hora':         hora_str,
+                    'treino':       treino,
+                    'ex_id':        ex['id'],
+                    'nome':         ex['nome'],
+                    'series_total': ex.get('series', ''),
+                    'peso':         ex.get('peso', ''),
+                    'concluido':    True,
+                })
+            try:
+                with open(self.atividade_file, 'w', encoding='utf-8') as f:
+                    json.dump(self.atividade, f, ensure_ascii=False, indent=2)
+            except: pass
+
+        try:
+            with open(self.treinos_file, 'w', encoding='utf-8') as f:
+                json.dump(self.treinos, f, ensure_ascii=False, indent=2)
+            with open(self.historico_file, 'w', encoding='utf-8') as f:
+                json.dump(self.historico, f, ensure_ascii=False, indent=2)
+            
+            if self.cliente:
+                import firebase_sync
+                firebase_sync.salvar_dados(
+                    self.cliente['id'], self.historico, self.atividade, None,
+                    on_success=on_success, on_error=on_error
+                )
+            elif on_success:
+                on_success()
+        except Exception as e:
+            if on_error: on_error(str(e))
+
     def _puxar_treinos_firebase(self):
         def _thread_sync():
             try:
