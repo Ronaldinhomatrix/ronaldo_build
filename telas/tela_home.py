@@ -356,7 +356,7 @@ class TelaHome(MDScreen):
 
             if not letras:
                 self._container.add_widget(MDLabel(
-                    text="Nenhum treino encontrado.\nClique em 'Atualizar' ou fale com o treinador.",
+                    text="Avise Ronaldo Medeiros que seu app já está instalado.\nO seu treino personalizado aparecerá aqui!",
                     halign='center',
                     theme_text_color='Secondary',
                     size_hint_y=None,
