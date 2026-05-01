@@ -117,10 +117,25 @@ class TelaHome(MDScreen):
         self._dialog_remover = None
         self._build()
 
+    def set_status(self, texto):
+        self._lbl_status.text = texto
+
     def _build(self):
         from kivy.uix.scrollview import ScrollView
 
         root = MDBoxLayout(orientation='vertical')
+        
+        # Pequeno status bar no topo para debug
+        self._lbl_status = MDLabel(
+            text='v3.13',
+            halign='right',
+            font_style='Caption',
+            theme_text_color='Hint',
+            size_hint_y=None,
+            height=dp(20),
+            padding=[0, 0, dp(10), 0]
+        )
+        root.add_widget(self._lbl_status)
 
         # ── área rolável ──────────────────────────────────────────────────────
         self.scroll = ScrollView(size_hint=(1, 1))

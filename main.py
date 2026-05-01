@@ -20,6 +20,8 @@ from kivy.utils import platform as kivy_platform
 if kivy_platform == 'android':
     os.environ['KIVY_VIDEO'] = 'android'
 
+VERSION = "3.13"
+
 def _pasta_downloads():
     if kivy_platform == 'android':
         return '/storage/emulated/0/Download'
@@ -82,16 +84,16 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             return self.sm
 
         except Exception as e:
-            return Label(text=f"Erro de Inicializacao:\n{str(e)}", color=(1,0,0,1))
+            return Label(text=f"Erro Crítico v{VERSION}:\n{str(e)}", color=(1,0,0,1))
 
     def on_start(self):
         if hasattr(self, 'cliente') and self.cliente:
             self._puxar_treinos_firebase()
 
     def on_resume(self):
-        # Atualiza sempre que o app volta do background (minimizado)
         if hasattr(self, 'cliente') and self.cliente:
             self._puxar_treinos_firebase()
+        return True
 
     def _carregar(self, path, default):
         try:
@@ -157,8 +159,11 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                 import firebase_sync
                 if not self.cliente: return
                 
+                # Feedback para a interface
+                home = self.sm.get_screen('home') if self.sm.has_screen('home') else None
+                if home: Clock.schedule_once(lambda dt: home.set_status("Sincronizando..."))
+
                 dados = firebase_sync.buscar_cliente_completo(self.cliente['id'])
-                # Sincroniza SEMPRE se houver dados, ignorando flags, para garantir atualização constante
                 if dados:
                     self.treinos = dados.get('treinos', {})
                     self.treinos_nomes = dados.get('treinos_nomes', {})
@@ -169,9 +174,12 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                     with open(self.treinos_nomes_file, 'w', encoding='utf-8') as f:
                         json.dump(self.treinos_nomes, f, ensure_ascii=False)
                     
-                    Clock.schedule_once(lambda dt: self.sm.get_screen('home')._reconstruir_botoes() if self.sm.has_screen('home') else None)
+                    Clock.schedule_once(lambda dt: home._reconstruir_botoes() if home else None)
+                    if home: Clock.schedule_once(lambda dt: home.set_status("v"+VERSION))
+                else:
+                    if home: Clock.schedule_once(lambda dt: home.set_status("Sem conexão"))
             except Exception as e:
-                print(f"Erro sincronia: {e}")
+                if home: Clock.schedule_once(lambda dt: home.set_status("Erro sincronia"))
 
         threading.Thread(target=_thread_sync, daemon=True).start()
 
