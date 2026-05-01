@@ -64,6 +64,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             from telas.tela_treino import TelaTreino
             from telas.tela_historico import TelaHistorico
             from telas.tela_atividade import TelaAtividade
+            from telas.tela_configuracoes import TelaConfiguracoes
 
             self.sm = ScreenManager(transition=SlideTransition())
             self.sm.add_widget(TelaCadastro(name='cadastro'))
@@ -71,6 +72,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
             self.sm.add_widget(TelaTreino(name='treino'))
             self.sm.add_widget(TelaHistorico(name='historico'))
             self.sm.add_widget(TelaAtividade(name='atividade'))
+            self.sm.add_widget(TelaConfiguracoes(name='configuracoes'))
 
             if self.cliente:
                 self.sm.current = 'home'
@@ -84,89 +86,36 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
 
     def on_start(self):
         if hasattr(self, 'cliente') and self.cliente:
-            import firebase_sync
-            threading.Thread(target=self._puxar_treinos_firebase, daemon=True).start()
+            self._puxar_treinos_firebase()
 
-    def _carregar(self, path, default):
-        try:
-            if os.path.exists(path):
-                with open(path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-        except: pass
-        return default
-
-    def _recuperar_cliente_downloads(self):
-        try:
-            dados = self._carregar(self._CLIENTE_BACKUP, None)
-            if dados and dados.get('id'):
-                cliente = {'id': dados['id'], 'nome': dados['nome']}
-                with open(self.cliente_file, 'w', encoding='utf-8') as f:
-                    json.dump(cliente, f)
-                return cliente
-        except: pass
-        return None
-
-    def salvar(self, treino=None, exercicios_concluidos=None, on_success=None, on_error=None):
-        agora = datetime.now()
-        data_str = agora.strftime('%d/%m/%Y')
-        hora_str = agora.strftime('%H:%M:%S')
-
-        if treino and exercicios_concluidos:
-            for ex in exercicios_concluidos:
-                self.atividade.append({
-                    'data':         data_str,
-                    'hora':         hora_str,
-                    'treino':       treino,
-                    'ex_id':        ex['id'],
-                    'nome':         ex['nome'],
-                    'series_total': ex.get('series', ''),
-                    'peso':         ex.get('peso', ''),
-                    'concluido':    True,
-                })
-            try:
-                with open(self.atividade_file, 'w', encoding='utf-8') as f:
-                    json.dump(self.atividade, f, ensure_ascii=False, indent=2)
-            except: pass
-
-        try:
-            with open(self.treinos_file, 'w', encoding='utf-8') as f:
-                json.dump(self.treinos, f, ensure_ascii=False, indent=2)
-            with open(self.historico_file, 'w', encoding='utf-8') as f:
-                json.dump(self.historico, f, ensure_ascii=False, indent=2)
-            
-            if self.cliente:
-                import firebase_sync
-                firebase_sync.salvar_dados(
-                    self.cliente['id'], self.historico, self.atividade, None,
-                    on_success=on_success, on_error=on_error
-                )
-            elif on_success:
-                on_success()
-        except Exception as e:
-            if on_error: on_error(str(e))
+    def on_resume(self):
+        # Atualiza sempre que o app volta do background (minimizado)
+        if hasattr(self, 'cliente') and self.cliente:
+            self._puxar_treinos_firebase()
 
     def _puxar_treinos_firebase(self):
-        try:
-            import firebase_sync
-            if not self.cliente: return
-            
-            dados = firebase_sync.buscar_cliente_completo(self.cliente['id'])
-            # REGRA: Atualiza se o trainer editou OU se o app está sem treinos atualmente
-            if dados and (dados.get('trainer_editou') or not self.treinos or len(self.treinos) == 0):
-                self.treinos = dados['treinos']
-                self.treinos_nomes = dados['treinos_nomes']
-                self.treino_atual = dados.get('treino_atual', '')
+        def _thread_sync():
+            try:
+                import firebase_sync
+                if not self.cliente: return
                 
-                # Salva localmente para uso offline
-                with open(self.treinos_file, 'w', encoding='utf-8') as f:
-                    json.dump(self.treinos, f, ensure_ascii=False)
-                with open(self.treinos_nomes_file, 'w', encoding='utf-8') as f:
-                    json.dump(self.treinos_nomes, f, ensure_ascii=False)
-                
-                # Atualiza a interface
-                Clock.schedule_once(lambda dt: self.sm.get_screen('home')._reconstruir_botoes() if self.sm.has_screen('home') else None)
-        except Exception as e:
-            print(f"Erro ao puxar treinos: {e}")
+                dados = firebase_sync.buscar_cliente_completo(self.cliente['id'])
+                # Sincroniza SEMPRE se houver dados, ignorando flags, para garantir atualização constante
+                if dados:
+                    self.treinos = dados.get('treinos', {})
+                    self.treinos_nomes = dados.get('treinos_nomes', {})
+                    self.treino_atual = dados.get('treino_atual', '')
+                    
+                    with open(self.treinos_file, 'w', encoding='utf-8') as f:
+                        json.dump(self.treinos, f, ensure_ascii=False)
+                    with open(self.treinos_nomes_file, 'w', encoding='utf-8') as f:
+                        json.dump(self.treinos_nomes, f, ensure_ascii=False)
+                    
+                    Clock.schedule_once(lambda dt: self.sm.get_screen('home')._reconstruir_botoes() if self.sm.has_screen('home') else None)
+            except Exception as e:
+                print(f"Erro sincronia: {e}")
+
+        threading.Thread(target=_thread_sync, daemon=True).start()
 
 if __name__ == '__main__':
     RonaldoMedeirosFisiologistaApp().run()
