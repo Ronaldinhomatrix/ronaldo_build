@@ -53,6 +53,18 @@ class TelaConfiguracoes(MDScreen):
             height=dp(24),
         ))
 
+        # Exibe o ID do Cliente para conferência no Painel
+        app = MDApp.get_running_app()
+        cliente_id = app.cliente['id'] if app.cliente else 'Não identificado'
+        content.add_widget(MDLabel(
+            text=f'ID: {cliente_id}',
+            halign='center',
+            font_style='Caption',
+            theme_text_color='Hint',
+            size_hint_y=None,
+            height=dp(20),
+        ))
+
         content.add_widget(MDBoxLayout(size_hint_y=1))
 
         root.add_widget(content)

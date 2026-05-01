@@ -119,14 +119,20 @@ def salvar_dados(cliente_id, historico, atividade, obs_cliente=None, on_success=
     threading.Thread(target=_run, daemon=True).start()
 
 def buscar_id_por_nome(nome):
+    """
+    Busca o ID do cliente no Firestore.
+    Rigor absoluto: exige correspondência exata de caracteres.
+    """
     try:
         url = f'{_BASE}:runQuery?key={API_KEY}'
+        # A query EQUAL do Firestore é sensível a maiúsculas/minúsculas por padrão
         query = {"structuredQuery": {"from": [{"collectionId": "atletas"}], "where": {"fieldFilter": {"field": {"fieldPath": "nome"}, "op": "EQUAL", "value": {"stringValue": nome}}}, "limit": 1}}
         req = urllib.request.Request(url, data=json.dumps(query).encode('utf-8'), method='POST')
         req.add_header('Content-Type', 'application/json')
         with urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT) as resp:
             res = json.loads(resp.read())
-            if res and 'document' in res[0]: return res[0]['document']['name'].split('/')[-1]
+            if res and 'document' in res[0]:
+                return res[0]['document']['name'].split('/')[-1]
     except: pass
     return None
 

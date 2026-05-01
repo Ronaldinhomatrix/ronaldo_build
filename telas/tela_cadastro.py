@@ -177,9 +177,12 @@ class TelaCadastro(MDScreen):
         if not cliente_id_existente:
             firebase_sync.criar_cliente(cliente_id, nome)
 
-        # 5. Finaliza
+        # 5. Finaliza e dispara sincronia
         Clock.schedule_once(lambda dt: self._finalizar_cadastro(), 0)
 
     def _finalizar_cadastro(self):
         app = MDApp.get_running_app()
+        # Força o app a buscar os treinos do novo cliente imediatamente
+        if hasattr(app, '_puxar_treinos_firebase'):
+            app._puxar_treinos_firebase()
         app.sm.current = 'home'
