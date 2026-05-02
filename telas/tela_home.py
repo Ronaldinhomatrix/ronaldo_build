@@ -127,7 +127,7 @@ class TelaHome(MDScreen):
         
         # Pequeno status bar no topo para debug
         self._lbl_status = MDLabel(
-            text='v3.14',
+            text='v3.15',
             halign='right',
             font_style='Caption',
             theme_text_color='Hint',
