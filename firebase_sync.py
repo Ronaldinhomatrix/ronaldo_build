@@ -1,6 +1,6 @@
 """
 Sincronização com o Firebase Firestore via biblioteca Requests.
-Versão: 3.1 - Busca via Query para evitar erro 403.
+Versão: 3.2 - Busca via Query EQUAL (Correção do Erro 400).
 """
 import json
 import threading
@@ -10,7 +10,7 @@ import requests
 from firebase_config import API_KEY, PROJECT_ID
 
 _BASE = f'https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents'
-_HEADERS = {'User-Agent': 'RonaldoMedeirosApp/3.16'}
+_HEADERS = {'User-Agent': 'RonaldoMedeirosApp/3.17'}
 
 # ── Conversão Firestore ──────────────────────────────────────────────────────
 
@@ -39,20 +39,23 @@ def _para_fs(valor):
 
 def buscar_cliente_completo(cliente_id):
     """
-    Busca dados via runQuery para contornar restrições de GET (Erro 403).
+    Busca dados via runQuery com caminho completo (EQUAL) para evitar 400/403.
     """
     try:
         url = f'{_BASE}:runQuery'
         params = {'key': API_KEY}
-        # Filtra pelo ID do documento (nome técnico no Firestore é __name__)
+        
+        # O Firestore exige o caminho completo para filtrar pelo nome do documento (__name__)
+        caminho_completo = f'projects/{PROJECT_ID}/databases/(default)/documents/atletas/{cliente_id}'
+        
         query = {
             "structuredQuery": {
                 "from": [{"collectionId": "atletas"}],
                 "where": {
                     "fieldFilter": {
                         "field": {"fieldPath": "__name__"},
-                        "op": "ENDSWITH",
-                        "value": {"stringValue": cliente_id}
+                        "op": "EQUAL",
+                        "value": {"referenceValue": caminho_completo}
                     }
                 },
                 "limit": 1
@@ -68,6 +71,7 @@ def buscar_cliente_completo(cliente_id):
             doc = res_json[0]['document']
             fields = doc.get('fields', {})
             
+            # Decodifica treinos
             t_raw = _de_fs(fields.get('treinos'))
             treinos = json.loads(t_raw) if isinstance(t_raw, str) else (t_raw or {})
             
@@ -129,7 +133,6 @@ def salvar_dados(cliente_id, historico, atividade, obs_cliente=None, on_success=
             }
             if obs_cliente: fields['obs_cliente'] = _para_fs(obs_cliente)
             
-            # Patch exige updateMask para ser seguro
             mask = '&'.join(f'updateMask.fieldPaths={k}' for k in fields.keys())
             url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}&{mask}'
             requests.patch(url, json={'fields': fields}, headers=_HEADERS, timeout=15)

@@ -20,7 +20,7 @@ from kivy.utils import platform as kivy_platform
 if kivy_platform == 'android':
     os.environ['KIVY_VIDEO'] = 'android'
 
-VERSION = "3.16"
+VERSION = "3.17"
 
 def _pasta_downloads():
     if kivy_platform == 'android':
