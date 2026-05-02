@@ -20,7 +20,7 @@ from kivy.utils import platform as kivy_platform
 if kivy_platform == 'android':
     os.environ['KIVY_VIDEO'] = 'android'
 
-VERSION = "3.13"
+VERSION = "3.14"
 
 def _pasta_downloads():
     if kivy_platform == 'android':
@@ -164,7 +164,7 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                 if home: Clock.schedule_once(lambda dt: home.set_status("Sincronizando..."))
 
                 dados = firebase_sync.buscar_cliente_completo(self.cliente['id'])
-                if dados:
+                if dados and dados.get('status') == 'sucesso':
                     self.treinos = dados.get('treinos', {})
                     self.treinos_nomes = dados.get('treinos_nomes', {})
                     self.treino_atual = dados.get('treino_atual', '')
@@ -177,9 +177,14 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                     Clock.schedule_once(lambda dt: home._reconstruir_botoes() if home else None)
                     if home: Clock.schedule_once(lambda dt: home.set_status("v"+VERSION))
                 else:
-                    if home: Clock.schedule_once(lambda dt: home.set_status("Sem conexão"))
+                    status_txt = dados.get('status', 'erro') if dados else "falha"
+                    if home: Clock.schedule_once(lambda dt: home.set_status(f"Status: {status_txt}"))
             except Exception as e:
-                if home: Clock.schedule_once(lambda dt: home.set_status("Erro sincronia"))
+                # Usa Clock para atualizar a interface com segurança a partir da thread
+                def _erro_ui(dt):
+                    home_screen = self.sm.get_screen('home') if self.sm.has_screen('home') else None
+                    if home_screen: home_screen.set_status("Erro: Conexão")
+                Clock.schedule_once(_erro_ui)
 
         threading.Thread(target=_thread_sync, daemon=True).start()
 
