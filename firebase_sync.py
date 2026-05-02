@@ -1,16 +1,16 @@
 """
 Sincronização com o Firebase Firestore via biblioteca Requests.
-Versão: 3.0 - Motor Robusto com tratamento de erros.
+Versão: 3.1 - Busca via Query para evitar erro 403.
 """
 import json
 import threading
 from datetime import datetime
-import requests # Usando requests em vez de urllib
+import requests
 
 from firebase_config import API_KEY, PROJECT_ID
 
 _BASE = f'https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents'
-_HEADERS = {'User-Agent': 'RonaldoMedeirosApp/3.14'}
+_HEADERS = {'User-Agent': 'RonaldoMedeirosApp/3.16'}
 
 # ── Conversão Firestore ──────────────────────────────────────────────────────
 
@@ -38,16 +38,36 @@ def _para_fs(valor):
 # ── API Pública ───────────────────────────────────────────────────────────────
 
 def buscar_cliente_completo(cliente_id):
+    """
+    Busca dados via runQuery para contornar restrições de GET (Erro 403).
+    """
     try:
-        url = f'{_BASE}/atletas/{cliente_id}'
+        url = f'{_BASE}:runQuery'
         params = {'key': API_KEY}
-        resp = requests.get(url, params=params, headers=_HEADERS, timeout=15)
+        # Filtra pelo ID do documento (nome técnico no Firestore é __name__)
+        query = {
+            "structuredQuery": {
+                "from": [{"collectionId": "atletas"}],
+                "where": {
+                    "fieldFilter": {
+                        "field": {"fieldPath": "__name__"},
+                        "op": "ENDSWITH",
+                        "value": {"stringValue": cliente_id}
+                    }
+                },
+                "limit": 1
+            }
+        }
+        resp = requests.post(url, params=params, json=query, headers=_HEADERS, timeout=15)
         
         if resp.status_code == 200:
-            doc = resp.json()
+            res_json = resp.json()
+            if not res_json or 'document' not in res_json[0]:
+                return {'status': 'nao_encontrado'}
+                
+            doc = res_json[0]['document']
             fields = doc.get('fields', {})
             
-            # Decodifica treinos (pode ser String JSON ou Mapa)
             t_raw = _de_fs(fields.get('treinos'))
             treinos = json.loads(t_raw) if isinstance(t_raw, str) else (t_raw or {})
             
@@ -61,8 +81,6 @@ def buscar_cliente_completo(cliente_id):
                 'treino_atual': _de_fs(fields.get('treino_atual')) or '',
                 'status': 'sucesso'
             }
-        elif resp.status_code == 404:
-            return {'status': 'nao_encontrado'}
         else:
             return {'status': f'erro_{resp.status_code}'}
     except Exception as e:
@@ -111,9 +129,10 @@ def salvar_dados(cliente_id, historico, atividade, obs_cliente=None, on_success=
             }
             if obs_cliente: fields['obs_cliente'] = _para_fs(obs_cliente)
             
-            url = f'{_BASE}/atletas/{cliente_id}'
-            params = {'key': API_KEY, 'updateMask.fieldPaths': list(fields.keys())}
-            requests.patch(url, params=params, json={'fields': fields}, headers=_HEADERS, timeout=15)
+            # Patch exige updateMask para ser seguro
+            mask = '&'.join(f'updateMask.fieldPaths={k}' for k in fields.keys())
+            url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}&{mask}'
+            requests.patch(url, json={'fields': fields}, headers=_HEADERS, timeout=15)
             if on_success: Clock.schedule_once(lambda dt: on_success(), 0)
         except Exception as e:
             if on_error: Clock.schedule_once(lambda dt: on_error(str(e)), 0)
