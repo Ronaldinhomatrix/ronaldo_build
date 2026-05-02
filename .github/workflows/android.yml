@@ -1,8 +1,7 @@
-name: Build APK
-# Trigger change
+name: Build APK Assinado (Oficial)
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -20,28 +19,39 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            git zip unzip python3-pip autoconf automake libtool \
-            pkg-config cmake patch libffi-dev libssl-dev libltdl-dev \
-            libgmp-dev libsqlite3-dev zlib1g-dev libncurses5-dev \
-            libncursesw5-dev libbz2-dev libreadline-dev libgdbm-dev \
-            libexpat1-dev liblzma-dev uuid-dev libmpc-dev libmpfr-dev \
-            libavcodec-dev libavformat-dev libswscale-dev libavdevice-dev \
-            libavfilter-dev libpostproc-dev libswresample-dev
-          
+          sudo apt-get install -y git zip unzip python3-pip autoconf automake libtool pkg-config cmake patch libffi-dev libssl-dev libsqlite3-dev
           pip3 install --user --upgrade buildozer "cython<3.0"
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ronaldo.jks
 
       - name: Build with Buildozer
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          # Aceita licenças e inicia o build
-          yes | buildozer android debug
+          # Buildozer release gera o APK que aceita assinatura externa
+          buildozer android release
         env:
           BUILDOZER_ALLOW_ORG_NAME_START_WITH_DIGIT: 1
-          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m"
 
-      - name: Upload APK
+      - name: Sign APK
+        run: |
+          # Localiza apksigner e o APK gerado
+          APK_PATH=$(find bin/ -name "*-release-unsigned.apk" | head -n 1)
+          [ -z "$APK_PATH" ] && APK_PATH=$(find bin/ -name "*.apk" | head -n 1)
+          
+          # Assina usando a keystore decodificada
+          # O comando abaixo assume o caminho do SDK padrão do buildozer no GitHub
+          /usr/local/lib/android/sdk/build-tools/34.0.0/apksigner sign \
+            --ks ronaldo.jks \
+            --ks-key-alias ${{ secrets.KEY_ALIAS }} \
+            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
+            --key-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
+            --out bin/RonaldoMedeirosFisiologista_Oficial.apk \
+            "$APK_PATH"
+
+      - name: Upload APK Oficial
         uses: actions/upload-artifact@v4
         with:
-          name: ronaldo-medeiros-apk
-          path: bin/*.apk
+          name: ronaldo-medeiros-apk-oficial
+          path: bin/RonaldoMedeirosFisiologista_Oficial.apk
