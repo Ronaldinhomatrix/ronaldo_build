@@ -26,30 +26,40 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ronaldo.jks
 
+      - name: Accept Android Licenses
+        run: |
+          # Aceita licenças de forma robusta antes de começar
+          mkdir -p $HOME/.android
+          touch $HOME/.android/repositories.cfg
+          # O buildozer vai baixar o SDK, mas aqui garantimos que as ferramentas de sistema aceitem as licenças
+          export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+          # O buildozer lida com isso internamente se a flag estiver no spec
+
       - name: Build with Buildozer
         run: |
           export PATH=$PATH:$HOME/.local/bin
-          # yes | aceita todas as licenças do SDK automaticamente
-          yes | buildozer android release
+          # Buildozer android release sem o pipe do 'yes' para evitar Broken Pipe
+          buildozer android release
         env:
           BUILDOZER_ALLOW_ORG_NAME_START_WITH_DIGIT: 1
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx2048m -XX:+HeapDumpOnOutOfMemoryError"
 
       - name: Sign and Align APK
         run: |
-          # Localiza as ferramentas do Android SDK instaladas pelo Buildozer
+          # Busca as ferramentas de assinatura
           BUILD_TOOLS_DIR=$(find $HOME/.buildozer/android/platform/android-sdk/build-tools -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
           APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
           ZIPALIGN="$BUILD_TOOLS_DIR/zipalign"
           
-          # Localiza o APK gerado
+          # Localiza o APK unsigned
           UNSIGNED_APK=$(find bin/ -name "*-release-unsigned.apk" | head -n 1)
           [ -z "$UNSIGNED_APK" ] && UNSIGNED_APK=$(find bin/ -name "*.apk" | head -n 1)
           
           echo "Ferramentas: $BUILD_TOOLS_DIR"
-          echo "APK: $UNSIGNED_APK"
+          echo "APK Original: $UNSIGNED_APK"
 
-          # Alinhamento e Assinatura
-          $ZIPALIGN -f 4 "$UNSIGNED_APK" bin/aligned.apk
+          # Alinhamento e Assinatura com a Keystore do Ronaldo
+          $ZIPALIGN -v -f 4 "$UNSIGNED_APK" bin/aligned.apk
           $APKSIGNER sign \
             --ks ronaldo.jks \
             --ks-key-alias ${{ secrets.KEY_ALIAS }} \
