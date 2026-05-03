@@ -8,7 +8,8 @@ source.exclude_dirs = p4a_recipes,painel,.git,bin
 icon.filename = %(source.dir)s/icon_rm.png
 version = 3.18
 
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius
+# Requirements ajustados para estabilidade com motor requests
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius,urllib3
 
 orientation = portrait
 fullscreen = 0
@@ -17,7 +18,10 @@ android.release_artifact = apk
 android.api = 34
 android.minapi = 21
 android.ndk = 25b
-android.archs = arm64-v8a, armeabi-v7a
+
+# Compilando apenas para a arquitetura mais comum para garantir o sucesso no GitHub
+android.archs = arm64-v8a
+
 android.accept_sdk_license = True
 android.video_player = mediaplayer
 
