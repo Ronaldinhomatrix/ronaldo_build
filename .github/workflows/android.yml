@@ -46,27 +46,17 @@ jobs:
 
       - name: Sign and Align APK
         run: |
-          # Busca as ferramentas de assinatura
           BUILD_TOOLS_DIR=$(find $HOME/.buildozer/android/platform/android-sdk/build-tools -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
           APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
           ZIPALIGN="$BUILD_TOOLS_DIR/zipalign"
-          
-          # Localiza o APK unsigned
           UNSIGNED_APK=$(find bin/ -name "*-release-unsigned.apk" | head -n 1)
-          [ -z "$UNSIGNED_APK" ] && UNSIGNED_APK=$(find bin/ -name "*.apk" | head -n 1)
           
-          echo "Ferramentas: $BUILD_TOOLS_DIR"
-          echo "APK Original: $UNSIGNED_APK"
-
-          # Alinhamento e Assinatura com a Keystore do Ronaldo
-          $ZIPALIGN -v -f 4 "$UNSIGNED_APK" bin/aligned.apk
-          $APKSIGNER sign \
-            --ks ronaldo.jks \
-            --ks-key-alias ${{ secrets.KEY_ALIAS }} \
-            --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
-            --key-pass pass:${{ secrets.KEYSTORE_PASSWORD }} \
-            --out bin/RonaldoMedeirosFisiologista_Oficial.apk \
-            bin/aligned.apk
+          $ZIPALIGN -f 4 "$UNSIGNED_APK" bin/aligned.apk
+          $APKSIGNER sign --ks ronaldo.jks --ks-key-alias ${{ secrets.KEY_ALIAS }} --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} --key-pass pass:${{ secrets.KEYSTORE_PASSWORD }} --out bin/RonaldoMedeirosFisiologista_Oficial.apk bin/aligned.apk
+          
+          echo "=== ASSINATURA DIGITAL DO APK (SHA-1) ==="
+          keytool -printcert -jarfile bin/RonaldoMedeirosFisiologista_Oficial.apk | grep "SHA1:"
+          echo "=========================================="
 
       - name: Upload APK Oficial
         uses: actions/upload-artifact@v4

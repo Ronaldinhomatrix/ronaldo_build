@@ -1,13 +1,19 @@
 """
 Sincronização com o Firebase Firestore.
-Versão: 3.18 - Método Simplificado Universal.
+Versão: 3.19 - Retorno ao motor urllib original.
 """
 import json
+import ssl
 import threading
+import urllib.request
 from datetime import datetime
-import requests
-
 from firebase_config import API_KEY, PROJECT_ID
+
+try:
+    import certifi
+    _SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+except:
+    _SSL_CONTEXT = ssl.create_default_context()
 
 _BASE = f'https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents'
 
@@ -23,23 +29,13 @@ def _de_fs(fv):
         return [_de_fs(v) for v in fv['arrayValue'].get('values', [])]
     return None
 
-def _para_fs(valor):
-    if isinstance(valor, bool): return {'booleanValue': valor}
-    if isinstance(valor, int): return {'integerValue': str(valor)}
-    if isinstance(valor, float): return {'doubleValue': valor}
-    if isinstance(valor, str): return {'stringValue': valor}
-    if isinstance(valor, dict): return {'mapValue': {'fields': {k: _para_fs(v) for k, v in valor.items()}}}
-    if isinstance(valor, list): return {'arrayValue': {'values': [_para_fs(v) for v in valor]}}
-    return {'nullValue': None}
-
 def buscar_cliente_completo(cliente_id):
     try:
-        # Método GET simples com API Key na URL (como era antigamente)
         url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}'
-        resp = requests.get(url, timeout=15)
-        
-        if resp.status_code == 200:
-            fields = resp.json().get('fields', {})
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT) as resp:
+            doc = json.loads(resp.read())
+            fields = doc.get('fields', {})
             t_raw = _de_fs(fields.get('treinos'))
             treinos = json.loads(t_raw) if isinstance(t_raw, str) else (t_raw or {})
             n_raw = _de_fs(fields.get('treinos_nomes'))
@@ -50,17 +46,19 @@ def buscar_cliente_completo(cliente_id):
                 'treino_atual': _de_fs(fields.get('treino_atual')) or '',
                 'status': 'sucesso'
             }
-        return {'status': f'erro_{resp.status_code}'}
-    except:
+    except Exception as e:
+        if '403' in str(e): return {'status': 'erro_403'}
         return {'status': 'offline'}
 
 def buscar_id_por_nome(nome):
     try:
         url = f'{_BASE}:runQuery?key={API_KEY}'
         query = {"structuredQuery": {"from": [{"collectionId": "atletas"}], "where": {"fieldFilter": {"field": {"fieldPath": "nome"}, "op": "EQUAL", "value": {"stringValue": nome}}}, "limit": 1}}
-        resp = requests.post(url, json=query, timeout=10)
-        if resp.status_code == 200:
-            res = resp.json()
+        body = json.dumps(query).encode('utf-8')
+        req = urllib.request.Request(url, data=body, method='POST')
+        req.add_header('Content-Type', 'application/json')
+        with urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT) as resp:
+            res = json.loads(resp.read())
             if res and 'document' in res[0]: return res[0]['document']['name'].split('/')[-1]
     except: pass
     return None
@@ -69,8 +67,11 @@ def criar_cliente(cliente_id, nome):
     def _run():
         try:
             url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}'
-            data = {'fields': {'nome': _para_fs(nome), 'treinos': _para_fs('{}'), 'trainer_editou': _para_fs(False), 'data_admissao': _para_fs(datetime.now().strftime('%d/%m/%Y'))}}
-            requests.patch(url, json=data, timeout=10)
+            fields = {'nome': {'stringValue': nome}, 'treinos': {'stringValue': '{}'}, 'trainer_editou': {'booleanValue': False}, 'data_admissao': {'stringValue': datetime.now().strftime('%d/%m/%Y')}}
+            body = json.dumps({'fields': fields}).encode('utf-8')
+            req = urllib.request.Request(url, data=body, method='PATCH')
+            req.add_header('Content-Type', 'application/json')
+            urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT)
         except: pass
     threading.Thread(target=_run, daemon=True).start()
 
@@ -78,11 +79,12 @@ def salvar_dados(cliente_id, historico, atividade, obs_cliente=None, on_success=
     def _run():
         from kivy.clock import Clock
         try:
-            fields = {'historico': _para_fs(json.dumps(historico, ensure_ascii=False)), 'atividade': _para_fs(json.dumps(atividade, ensure_ascii=False)), 'trainer_editou': _para_fs(False)}
-            if obs_cliente: fields['obs_cliente'] = _para_fs(obs_cliente)
-            mask = '&'.join(f'updateMask.fieldPaths={k}' for k in fields.keys())
+            fields = {'historico': {'stringValue': json.dumps(historico)}, 'atividade': {'stringValue': json.dumps(atividade)}, 'trainer_editou': {'booleanValue': False}}
+            mask = 'updateMask.fieldPaths=historico&updateMask.fieldPaths=atividade&updateMask.fieldPaths=trainer_editou'
             url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}&{mask}'
-            requests.patch(url, json={'fields': fields}, timeout=15)
+            req = urllib.request.Request(url, data=json.dumps({'fields': fields}).encode('utf-8'), method='PATCH')
+            req.add_header('Content-Type', 'application/json')
+            urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT)
             if on_success: Clock.schedule_once(lambda dt: on_success(), 0)
         except Exception as e:
             if on_error: Clock.schedule_once(lambda dt: on_error(str(e)), 0)
