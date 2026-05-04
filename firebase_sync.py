@@ -86,8 +86,22 @@ def salvar_dados(cliente_id, historico, atividade, obs_cliente=None, on_success=
     def _run():
         from kivy.clock import Clock
         try:
-            fields = {'historico': {'stringValue': json.dumps(historico)}, 'atividade': {'stringValue': json.dumps(atividade)}, 'trainer_editou': {'booleanValue': False}}
+            fields = {
+                'historico': {'stringValue': json.dumps(historico)}, 
+                'atividade': {'stringValue': json.dumps(atividade)}, 
+                'trainer_editou': {'booleanValue': False}
+            }
             mask = 'updateMask.fieldPaths=historico&updateMask.fieldPaths=atividade&updateMask.fieldPaths=trainer_editou'
+            
+            if obs_cliente:
+                # Converte o dicionario de obs para o formato do Firestore mapValue
+                fields['obs_cliente'] = {
+                    'mapValue': {
+                        'fields': {k: {'stringValue': str(v)} for k, v in obs_cliente.items()}
+                    }
+                }
+                mask += '&updateMask.fieldPaths=obs_cliente'
+
             url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}&{mask}'
             req = urllib.request.Request(url, data=json.dumps({'fields': fields}).encode('utf-8'), method='PATCH')
             req.add_header('Content-Type', 'application/json')
@@ -95,4 +109,28 @@ def salvar_dados(cliente_id, historico, atividade, obs_cliente=None, on_success=
             if on_success: Clock.schedule_once(lambda dt: on_success(), 0)
         except Exception as e:
             if on_error: Clock.schedule_once(lambda dt: on_error(str(e)), 0)
+    threading.Thread(target=_run, daemon=True).start()
+
+def notificar_obs(cliente_nome, ex_nome, obs_texto, on_success=None, on_error=None):
+    def _run():
+        from kivy.clock import Clock
+        try:
+            from firebase_config import PAINEL_URL, NOTIF_TOKEN
+            url  = f'{PAINEL_URL}/notificar-obs'
+            body = json.dumps({
+                'cliente_nome': cliente_nome,
+                'ex_nome':      ex_nome,
+                'obs':          obs_texto,
+            }).encode('utf-8')
+            req = urllib.request.Request(
+                url, data=body,
+                headers={
+                    'Content-Type': 'application/json',
+                    'X-Token':      NOTIF_TOKEN,
+                },
+            )
+            urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT)
+            if on_success: Clock.schedule_once(lambda dt: on_success())
+        except Exception as e:
+            if on_error: Clock.schedule_once(lambda dt: on_error(str(e)))
     threading.Thread(target=_run, daemon=True).start()
