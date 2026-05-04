@@ -30,60 +30,95 @@ COR_PENDENTE  = get_color_from_hex('#3D3D3D')
 class CardExercicio(MDCard):
     @staticmethod
     def _caminho_video(nome):
-        import unicodedata
-        import re
+        # Normalização rigorosa para encontrar o arquivo
         sem_acento = unicodedata.normalize('NFD', nome)
         sem_acento = ''.join(c for c in sem_acento if unicodedata.category(c) != 'Mn')
+        
         arquivo = sem_acento.lower().strip()
-        arquivo = re.sub(r'[^a-z0-9\s_]', '', arquivo)
+        arquivo = re.sub(r'[^a-z0-9\s_]', '', arquivo) 
+        
         arquivo = arquivo.replace(' ', '_') + '.mp4'
         return os.path.join('assets', 'videos', arquivo)
 
     def __init__(self, ex, tela, **kwargs):
         super().__init__(
-            orientation='horizontal', size_hint=(1, None), padding=0, spacing=0,
-            ripple_behavior=True, md_bg_color=get_color_from_hex('#2C2C2E'),
-            radius=[dp(12)], elevation=2, **kwargs
+            orientation='horizontal',
+            size_hint=(1, None),
+            padding=0,
+            spacing=0,
+            ripple_behavior=True,
+            md_bg_color=get_color_from_hex('#2C2C2E'),
+            radius=[dp(12), dp(12), dp(12), dp(12)],
+            elevation=2,
+            **kwargs,
         )
         self.ex = ex
         self.tela = tela
         app = MDApp.get_running_app()
         self._feito = app.progresso_treino.get('feitos', {}).get(ex.get('id', ''), False)
         self._cor_pendente = COR_PENDENTE
-        self._tem_video = True # Assume que tem para mostrar o icone
+        
+        caminho = self._caminho_video(ex.get('nome', ''))
+        self._tem_video = True # Mantém o ícone visível
+        
         self._build()
 
     def _build(self):
-        borda = MDBoxLayout(size_hint=(None, 1), width=dp(4), md_bg_color=COR_ACCENT)
+        borda = MDBoxLayout(size_hint=(None, 1), width=Window.width * 0.010, md_bg_color=COR_ACCENT)
         self.add_widget(borda)
-        conteudo = MDBoxLayout(orientation='vertical', size_hint=(1, None), padding=[dp(10), 0, dp(10), dp(10)])
+
+        _esp_linhas = Window.height * 0.008
+        _esp_botoes = Window.height * 0.003
+        _pad_inf    = Window.height * 0.012
+
+        conteudo = MDBoxLayout(orientation='vertical', size_hint=(1, None), padding=[0, 0, 0, _pad_inf], spacing=0)
         conteudo.bind(minimum_height=conteudo.setter('height'))
         conteudo.bind(height=self.setter('height'))
 
-        linha1 = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(45), md_bg_color=get_color_from_hex('#5DADE2'))
-        lbl_nome = Label(text=self.ex['nome'], font_size='18sp', size_hint_x=1, halign='left', valign='middle')
+        linha1 = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=Window.height * 0.055, padding=[Window.width * 0.025, Window.height * 0.005], md_bg_color=get_color_from_hex('#5DADE2'))
+        lbl_nome = Label(text=self.ex['nome'], font_size='20sp', size_hint_x=1, color=(1, 1, 1, 1), halign='left', valign='middle')
         lbl_nome.bind(size=lbl_nome.setter('text_size'))
         linha1.add_widget(lbl_nome)
         
-        btn_play = MDIconButton(icon='play-circle-outline', theme_text_color='Custom', text_color=(1,1,1,1), on_release=lambda x: self.tela._ver_midia(self.ex))
-        linha1.add_widget(btn_play)
+        linha1.add_widget(MDIconButton(icon='play-circle-outline', theme_text_color='Custom', text_color=(0.6, 0.8, 1.0, 1), size_hint_x=None, pos_hint={'center_y': 0.5}, on_release=lambda x: self.tela._ver_midia(self.ex)))
         conteudo.add_widget(linha1)
 
         obs_trainer = self.ex.get('obs_trainer', '').strip()
         if obs_trainer:
-            conteudo.add_widget(MDLabel(text=obs_trainer, font_style='Caption', italic=True, theme_text_color='Custom', text_color=COR_ACCENT, size_hint_y=None, height=dp(30)))
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas * 1.5))
+            linha_obs_t = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=Window.height * 0.04, padding=[Window.width * 0.025, 0])
+            linha_obs_t.add_widget(MDLabel(text=obs_trainer, font_size='14sp', italic=True, theme_text_color='Custom', text_color=get_color_from_hex('#3498DB')))
+            conteudo.add_widget(linha_obs_t)
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas * 1.5))
+        else:
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
 
-        linha2 = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(40))
-        linha2.add_widget(MDLabel(text=f"Séries: {self.ex.get('series','')}", size_hint_x=0.5))
-        linha2.add_widget(MDLabel(text=f"Peso: {self.ex.get('peso','')} kg", halign='right'))
+        _h2 = Window.height * 0.038
+        series = self.ex.get('series', '')
+        repeticoes = self.ex.get('repeticoes', '')
+        peso = self.ex.get('peso', '')
+
+        linha2 = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=_h2, padding=[Window.width * 0.025, 0, Window.width * 0.025 * 1.2, 0])
+        linha2.add_widget(MDLabel(text='Séries:', font_size='11sp', theme_text_color='Secondary', halign='center', size_hint_x=0.38))
+        linha2.add_widget(MDLabel(text=series, font_size='16sp', theme_text_color='Primary', size_hint_x=0.09))
+        linha2.add_widget(MDLabel(text=f'Peso:  {peso} kg', font_size='16sp', theme_text_color='Primary', halign='right', size_hint_x=0.53))
         conteudo.add_widget(linha2)
+        conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_linhas))
 
-        linha3 = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        if repeticoes:
+            linha3_rep = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=_h2, padding=[Window.width * 0.025, 0, Window.width * 0.025 * 1.2, 0])
+            linha3_rep.add_widget(MDLabel(text='Repetições:', font_size='11sp', theme_text_color='Secondary', halign='center', size_hint_x=0.38))
+            linha3_rep.add_widget(MDLabel(text=repeticoes, font_size='16sp', theme_text_color='Primary', size_hint_x=0.62))
+            conteudo.add_widget(linha3_rep)
+            conteudo.add_widget(MDBoxLayout(size_hint_y=None, height=_esp_botoes))
+
+        linha3 = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=Window.height * 0.081, spacing=0, padding=[Window.height * 0.005, 0, Window.width * 0.025, 0])
         tem_obs = bool(self.ex.get('obs', '').strip())
-        self._btn_obs = MDRaisedButton(text='Obs.' if not tem_obs else 'Obs. OK', md_bg_color=COR_CONCLUIDO if tem_obs else self._cor_pendente, on_release=lambda x: self.tela._editar_obs(self.ex, self))
-        self._btn_feito = MDRaisedButton(text='✓ Feito' if self._feito else 'Feito', md_bg_color=COR_CONCLUIDO if self._feito else self._cor_pendente, on_release=self._toggle_feito)
+        self._btn_obs = MDRaisedButton(text='Observação Registrada' if tem_obs else 'Adicionar Observação', size_hint=(None, None), size=(Window.width * 0.320, Window.height * 0.063), font_size='13sp', rounded_button=True, md_bg_color=COR_CONCLUIDO if tem_obs else self._cor_pendente, on_release=lambda x: self.tela._editar_obs(self.ex, self))
         linha3.add_widget(self._btn_obs)
         linha3.add_widget(MDBoxLayout(size_hint_x=1))
+        self._btn_feito = MDRaisedButton(text='✓ Feito' if self._feito else 'Feito', size_hint=(None, None), size=(Window.width * 0.320, Window.height * 0.063), font_size='13sp', rounded_button=True, md_bg_color=COR_CONCLUIDO if self._feito else self._cor_pendente)
+        self._btn_feito.bind(on_release=self._toggle_feito)
         linha3.add_widget(self._btn_feito)
         conteudo.add_widget(linha3)
         self.add_widget(conteudo)
@@ -104,23 +139,25 @@ class TelaTreino(MDScreen):
 
     def _build(self):
         root = MDBoxLayout(orientation='vertical')
-        self.toolbar = MDTopAppBar(title='Treino', md_bg_color=get_color_from_hex('#1A1A1A'), left_action_items=[['arrow-left', lambda x: self._voltar()]])
+        self.toolbar = MDTopAppBar(title='Treino', md_bg_color=get_color_from_hex('#1A1A1A'), elevation=0, left_action_items=[['arrow-left', lambda x: self._voltar()]])
         root.add_widget(self.toolbar)
         scroll = ScrollView()
-        self.lista = MDBoxLayout(orientation='vertical', spacing=dp(15), padding=dp(15), size_hint_y=None)
+        self.lista = MDBoxLayout(orientation='vertical', spacing=Window.height * 0.030, padding=Window.width * 0.030, size_hint_y=None)
         self.lista.bind(minimum_height=self.lista.setter('height'))
         scroll.add_widget(self.lista)
         root.add_widget(scroll)
-        self._btn_concluir = MDRaisedButton(text='Registrar treino completo', size_hint=(1, None), height=dp(56), on_release=lambda x: self._confirmar_conclusao())
+        self._btn_concluir = MDRaisedButton(text='Registrar treino completo', size_hint=(1, None), height=dp(56), rounded_button=True, md_bg_color=(0.2, 0.2, 0.25, 1), on_release=lambda x: self._confirmar_conclusao())
         root.add_widget(self._btn_concluir)
         self.add_widget(root)
 
     def carregar(self, treino):
         self.treino_atual = treino
         app = MDApp.get_running_app()
-        self.toolbar.title = f"Treino {treino}"
+        nome = app.treinos_nomes.get(treino, '')
+        self.toolbar.title = f'Treino {treino} — {nome}' if nome else f'Treino {treino}'
         self.lista.clear_widgets()
         self._cards = []
+        if app.progresso_treino.get('treino') != treino: app.progresso_treino = {'treino': treino, 'feitos': {}}
         for ex in app.treinos.get(treino, []):
             card = CardExercicio(ex=ex, tela=self)
             self._cards.append(card)
@@ -130,6 +167,7 @@ class TelaTreino(MDScreen):
     def _verificar_conclusao(self):
         if not self._cards: return
         todos = all(c._feito for c in self._cards)
+        self._btn_concluir.text = 'Treino Registrado ✓' if todos else 'Registrar treino completo'
         self._btn_concluir.md_bg_color = COR_CONCLUIDO if todos else (0.2, 0.2, 0.25, 1)
 
     def _confirmar_conclusao(self):
@@ -137,11 +175,17 @@ class TelaTreino(MDScreen):
 
     def _executar_conclusao(self):
         app = MDApp.get_running_app()
-        app.salvar(treino=self.treino_atual, exercicios_concluidos=[c.ex for c in self._cards], on_success=lambda: setattr(app.sm, 'current', 'home'))
+        app.salvar(
+            treino=self.treino_atual, 
+            exercicios_concluidos=[c.ex for c in self._cards],
+            on_success=lambda: setattr(app.sm, 'current', 'home')
+        )
 
     def _editar_obs(self, ex, card):
-        campo = MDTextField(text=ex.get('obs', ''), hint_text='Sua observação', multiline=True)
-        dlg = MDDialog(title=ex['nome'], type='custom', content_cls=campo, buttons=[
+        campo = MDTextField(text=ex.get('obs', ''), hint_text='Observação sobre o exercício', mode='rectangle', multiline=True, size_hint_y=None, height=dp(80))
+        caixa = MDBoxLayout(orientation='vertical', size_hint_y=None, height=dp(96), padding=[dp(16), dp(4), dp(16), dp(4)])
+        caixa.add_widget(campo)
+        dlg = MDDialog(title=ex['nome'], type='custom', content_cls=caixa, buttons=[
             MDFlatButton(text='CANCELAR', on_release=lambda x: dlg.dismiss()),
             MDRaisedButton(text='SALVAR', on_release=lambda x: self._salvar_obs(ex, card, campo.text, dlg)),
         ])
@@ -162,12 +206,12 @@ class TelaTreino(MDScreen):
             firebase_sync.salvar_dados(app.cliente['id'], app.historico, app.atividade, {ex['id']: ex['obs']})
 
     def _on_obs_sucesso(self, card):
-        card._btn_obs.text = 'Obs. OK'
+        card._btn_obs.text = 'Observação Registrada'
         card._btn_obs.md_bg_color = COR_CONCLUIDO
 
     def _on_obs_erro(self, card, msg):
-        card._btn_obs.text = 'Erro'
-        card._btn_obs.md_bg_color = (0.8, 0, 0, 1)
+        card._btn_obs.text = 'Erro (Tentar de novo)'
+        card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1)
 
     def _ver_midia(self, ex):
         app = MDApp.get_running_app()
@@ -179,7 +223,7 @@ class TelaTreino(MDScreen):
             try:
                 from kivy.uix.videoplayer import VideoPlayer
                 player = VideoPlayer(source=caminho_final, state='play', options={'eos': 'loop'})
-                pop = Popup(title=ex['nome'], content=player, size_hint=(0.9, 0.8))
+                pop = Popup(title=ex['nome'], content=player, size_hint=(0.95, 0.8), background_color=(0, 0, 0, 0.95))
                 pop.bind(on_dismiss=lambda x: setattr(player, 'state', 'stop'))
                 pop.open()
             except Exception as e:
