@@ -270,8 +270,8 @@ class TelaTreino(MDScreen):
         caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
         nome_arquivo = os.path.basename(caminho_asset)
         
-        # 1. Preparar o local de destino (Cache do Smartphone)
-        video_dir = os.path.join(app.user_data_dir, 'videos_app')
+        # 1. Caminho na area de dados do app (Cross-platform)
+        video_dir = os.path.join(app.user_data_dir, 'videos_cache')
         if not os.path.exists(video_dir):
             os.makedirs(video_dir, exist_ok=True)
         
@@ -280,14 +280,16 @@ class TelaTreino(MDScreen):
         def _abrir_player(dt):
             try:
                 from kivy.uix.videoplayer import VideoPlayer
+                from kivy.utils import platform as kivy_plat
                 
-                # Garantir que o player use o caminho absoluto correto
-                path_uri = os.path.abspath(caminho_final)
+                # O segredo para Android/iOS: prefixo file:// e caminho absoluto
+                path_absoluto = os.path.abspath(caminho_final)
+                uri = "file://" + path_absoluto if kivy_plat in ('android', 'ios') else path_absoluto
                 
                 player = VideoPlayer(
-                    source=path_uri,
+                    source=uri,
                     state='play',
-                    options={'allow_stretch': True, 'eos': 'loop'}
+                    options={'eos': 'loop'}
                 )
                 
                 popup = Popup(
@@ -300,41 +302,37 @@ class TelaTreino(MDScreen):
                 popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
                 popup.open()
             except Exception as e:
-                MDDialog(text=f"Erro ao iniciar player: {str(e)}").open()
+                MDDialog(text=f"Erro ao carregar player: {str(e)}").open()
 
-        # 2. Processo de extração e delay
+        # 2. Processo de preparo do arquivo
         try:
-            # Só copia se o arquivo não existir ou estiver incompleto
+            # Força a extração do asset para o sistema de arquivos real
+            import shutil
+            
+            # Se o arquivo nao existe ou esta vazio, tenta copiar
             if not os.path.exists(caminho_final) or os.path.getsize(caminho_final) < 100:
-                # Tenta abrir o asset de forma segura
-                sucesso = False
-                # Lista de possíveis raízes do projeto no Android/iOS
-                possiveis_caminhos = [
-                    caminho_asset,
-                    os.path.join(os.getcwd(), caminho_asset),
-                    os.path.join(os.path.dirname(__file__), '..', caminho_asset)
-                ]
-                
-                import shutil
-                for p in possiveis_caminhos:
-                    if os.path.exists(p):
-                        with open(p, 'rb') as f_in:
-                            with open(caminho_final, 'wb') as f_out:
-                                shutil.copyfileobj(f_in, f_out)
-                        sucesso = True
-                        break
-                
-                if not sucesso:
-                    # Tenta o carregamento direto pelo Kivy se os caminhos físicos falharem
+                try:
                     with open(caminho_asset, 'rb') as f_in:
                         with open(caminho_final, 'wb') as f_out:
                             shutil.copyfileobj(f_in, f_out)
+                except Exception as e_copy:
+                    # Se falhar, tenta caminhos alternativos (comum no Android)
+                    alt_path = os.path.join(os.path.dirname(__file__), '..', caminho_asset)
+                    if os.path.exists(alt_path):
+                        with open(alt_path, 'rb') as f_in:
+                            with open(caminho_final, 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                    else:
+                        raise e_copy
 
-            # 3. Aguardar 1.0s para garantir que o arquivo foi fechado e o sistema está pronto
-            Clock.schedule_once(_abrir_player, 1.0)
+            # 3. Verifica se agora o arquivo existe e tem tamanho
+            if os.path.exists(caminho_final) and os.path.getsize(caminho_final) > 100:
+                Clock.schedule_once(_abrir_player, 1.0)
+            else:
+                MDDialog(text=f"Video nao encontrado ou corrompido:\n{nome_arquivo}\nCertifique-se que o arquivo esta em assets/videos/").open()
             
         except Exception as e:
-            MDDialog(text=f"Arquivo de video nao encontrado ou inacessivel.\nNome esperado: {nome_arquivo}").open()
+            MDDialog(text=f"Nao foi possivel preparar o video.\nErro: {str(e)}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
