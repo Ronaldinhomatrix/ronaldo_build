@@ -225,8 +225,6 @@ class TelaTreino(MDScreen):
     def _salvar_obs(self, ex, card, texto, dlg):
         ex['obs'] = texto.strip()
         app = MDApp.get_running_app()
-        
-        # Salva localmente
         app.salvar()
         
         tem_obs = bool(ex['obs'])
@@ -236,130 +234,83 @@ class TelaTreino(MDScreen):
             card._btn_obs.text = 'Enviando...'
             card._btn_obs.md_bg_color = COR_OBS
             
-            # Sincroniza a observação IMEDIATAMENTE com o Firestore
             import firebase_sync
-            
-            # 1. Envia notificação para o Telegram (Ronaldo)
+            # 1. Notifica o treinador
             firebase_sync.notificar_obs(
-                app.cliente['nome'], 
-                ex['nome'], 
-                ex['obs'], 
+                app.cliente['nome'], ex['nome'], ex['obs'], 
                 on_success=lambda: self._on_obs_sucesso(card), 
                 on_error=lambda m: self._on_obs_erro(card, m)
             )
-            
-            # 2. Salva a observação no documento do atleta no Firestore (como um mapa/dicionário)
-            threading.Thread(
-                target=firebase_sync.salvar_dados,
-                args=(app.cliente['id'], app.historico, app.atividade, {ex['id']: ex['obs']}),
-                daemon=True
-            ).start()
+            # 2. Salva no banco (Sem criar thread extra aqui, o firebase_sync ja faz isso)
+            firebase_sync.salvar_dados(
+                app.cliente['id'], app.historico, app.atividade, {ex['id']: ex['obs']}
+            )
         else:
             card._btn_obs.text = 'Adicionar Observação'
             card._btn_obs.md_bg_color = card._cor_pendente
-
-    def _on_obs_sucesso(self, card):
-        card._btn_obs.text = 'Observação Registrada'
-        card._btn_obs.md_bg_color = COR_CONCLUIDO
-
-    def _on_obs_erro(self, card, msg):
-        card._btn_obs.text = 'Erro (Tentar de novo)'
-        card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1)
 
     def _ver_midia(self, ex):
         app = MDApp.get_running_app()
         caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
         nome_arquivo = os.path.basename(caminho_asset)
         
-        def _abrir_player(dt, path_final):
+        from kivy.utils import platform as kivy_plat
+        
+        # Identifica a pasta segura no Thread Principal para evitar crash
+        base_dir = app.user_data_dir
+        if kivy_plat == 'android':
+            try:
+                from jnius import autoclass
+                activity = autoclass('org.kivy.android.PythonActivity').mActivity
+                ext_dir = activity.getExternalFilesDir(None)
+                if ext_dir:
+                    base_dir = ext_dir.getAbsolutePath()
+            except: pass
+
+        video_dir = os.path.join(base_dir, 'midia_v3')
+        if not os.path.exists(video_dir):
+            os.makedirs(video_dir, exist_ok=True)
+        caminho_final = os.path.join(video_dir, nome_arquivo)
+
+        def _abrir_player(dt):
             try:
                 from kivy.uix.videoplayer import VideoPlayer
-                from kivy.utils import platform as kivy_plat
-                
-                # Para Android e iOS, o caminho absoluto com prefixo file:// ajuda o player nativo
-                abs_path = os.path.abspath(path_final)
-                source_uri = "file://" + abs_path if kivy_plat in ('android', 'ios') else abs_path
+                # Caminho absoluto puro funciona melhor em Android e iOS
+                abs_path = os.path.abspath(caminho_final)
                 
                 player = VideoPlayer(
-                    source=source_uri,
+                    source=abs_path,
                     state='play',
-                    options={'allow_stretch': True, 'eos': 'loop'}
+                    options={'eos': 'loop'}
                 )
-                
-                popup = Popup(
-                    title=ex['nome'],
-                    content=player,
-                    size_hint=(0.95, 0.8),
-                    background_color=(0, 0, 0, 0.95)
-                )
-                
+                popup = Popup(title=ex['nome'], content=player, size_hint=(0.95, 0.8), background_color=(0, 0, 0, 0.95))
                 popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
                 popup.open()
             except Exception as e:
-                MDDialog(text=f"Erro ao abrir player nativo:\n{str(e)}").open()
+                MDDialog(text=f"Erro no Player: {str(e)}").open()
 
-        def _preparar_e_abrir():
-            from kivy.utils import platform as kivy_plat
-            
+        def _preparar():
             try:
-                # 1. Definir pasta de destino acessível
-                if kivy_plat == 'android':
-                    try:
-                        from jnius import autoclass
-                        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                        activity = PythonActivity.mActivity
-                        # getExternalFilesDir é acessível por processos de mídia nativos
-                        base_dir = activity.getExternalFilesDir(None).getAbsolutePath()
-                    except:
-                        base_dir = app.user_data_dir
-                else:
-                    base_dir = app.user_data_dir
-                
-                video_dir = os.path.join(base_dir, 'midia_treino')
-                if not os.path.exists(video_dir):
-                    os.makedirs(video_dir, exist_ok=True)
-                
-                caminho_final = os.path.join(video_dir, nome_arquivo)
-
-                # 2. Tentar copiar o asset para a pasta física
+                # Copia o video para a pasta acessivel se necessario
                 if not os.path.exists(caminho_final) or os.path.getsize(caminho_final) < 100:
-                    sucesso_copia = False
-                    # Lista de caminhos para tentar encontrar o vídeo nos assets
-                    tentativas = [
-                        caminho_asset,
-                        os.path.join(os.path.dirname(__file__), '..', caminho_asset),
-                        nome_arquivo,
-                        os.path.join('videos', nome_arquivo)
-                    ]
-                    
-                    for t in tentativas:
+                    sucesso = False
+                    for t in [caminho_asset, os.path.join(os.path.dirname(__file__), '..', caminho_asset)]:
                         try:
-                            # Kivy patches open() to read from APK assets on Android
-                            with open(t, 'rb') as f_in:
-                                with open(caminho_final, 'wb') as f_out:
-                                    shutil.copyfileobj(f_in, f_out)
+                            with open(t, 'rb') as f_in, open(caminho_final, 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
                             if os.path.getsize(caminho_final) > 100:
-                                sucesso_copia = True
-                                break
-                        except:
-                            continue
+                                sucesso = True; break
+                        except: continue
                     
-                    if not sucesso_copia:
-                        def _aviso_erro(dt):
-                            MDDialog(text=f"Video nao encontrado nos assets:\n{nome_arquivo}\nCaminho: {caminho_asset}").open()
-                        Clock.schedule_once(_aviso_erro, 0)
+                    if not sucesso:
+                        Clock.schedule_once(lambda dt: MDDialog(text="Video nao encontrado nos arquivos do App").open())
                         return
 
-                # 3. Delay de 1s para garantir que o arquivo foi liberado e o sistema está pronto
-                Clock.schedule_once(lambda dt: _abrir_player(dt, caminho_final), 1.0)
-                
+                Clock.schedule_once(_abrir_player, 1.0)
             except Exception as e:
-                def _aviso_critico(dt):
-                    MDDialog(text=f"Erro ao preparar video:\n{str(e)}").open()
-                Clock.schedule_once(_aviso_critico, 0)
+                Clock.schedule_once(lambda dt: MDDialog(text=f"Erro ao preparar midia: {str(e)}").open())
 
-        # Inicia o processo em uma thread para não travar a interface
-        threading.Thread(target=_preparar_e_abrir, daemon=True).start()
+        threading.Thread(target=_preparar, daemon=True).start()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
