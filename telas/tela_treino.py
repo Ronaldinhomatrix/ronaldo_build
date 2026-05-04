@@ -199,21 +199,21 @@ class TelaTreino(MDScreen):
         
         if ex['obs'] and app.cliente:
             card._btn_obs.text = 'Enviando...'
-            card._btn_obs.md_bg_color = COR_OBS # Amarelo
+            card._btn_obs.md_bg_color = COR_OBS # Fica Amarelo
             import firebase_sync
-            # O crash acontece quando callbacks de threads tocam a UI sem o Clock.schedule_once
+            # O crash ocorre por erro de argumentos na lambda. Adicionado *args para estabilidade.
             firebase_sync.notificar_obs(
                 app.cliente['nome'], ex['nome'], ex['obs'], 
-                on_success=lambda: Clock.schedule_once(lambda dt: self._on_obs_sucesso(card)),
-                on_error=lambda m: Clock.schedule_once(lambda dt: self._on_obs_erro(card, m))
+                on_success=lambda *args: Clock.schedule_once(lambda dt: self._on_obs_sucesso(card)),
+                on_error=lambda *args: Clock.schedule_once(lambda dt: self._on_obs_erro(card))
             )
             firebase_sync.salvar_dados(app.cliente['id'], app.historico, app.atividade, {ex['id']: ex['obs']})
 
     def _on_obs_sucesso(self, card):
         card._btn_obs.text = 'Observação Registrada'
-        card._btn_obs.md_bg_color = COR_CONCLUIDO # Verde
+        card._btn_obs.md_bg_color = COR_CONCLUIDO # Fica Verde
 
-    def _on_obs_erro(self, card, msg):
+    def _on_obs_erro(self, card):
         card._btn_obs.text = 'Erro (Tentar de novo)'
         card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1)
 
@@ -225,7 +225,7 @@ class TelaTreino(MDScreen):
         from kivy.utils import platform as kivy_plat
         video_dir = os.path.join(app.user_data_dir, 'midia_cache')
         if not os.path.exists(video_dir):
-            os.makedirs(video_dir)
+            os.makedirs(video_dir, exist_ok=True)
             
         caminho_final = os.path.join(video_dir, nome_arquivo)
 
@@ -233,13 +233,16 @@ class TelaTreino(MDScreen):
             try:
                 from kivy.uix.videoplayer import VideoPlayer
                 abs_path = os.path.abspath(caminho_final)
-                # Prefixo file:// obrigatório para Android nativo ler da memória interna
                 source_uri = "file://" + abs_path if kivy_plat in ('android', 'ios') else abs_path
                 
-                player = VideoPlayer(source=source_uri, state='play', options={'eos': 'loop', 'allow_stretch': True})
+                # Abre em PAUSA primeiro para estabilizar o hardware
+                player = VideoPlayer(source=source_uri, state='pause', options={'eos': 'loop', 'allow_stretch': True})
                 pop = Popup(title=ex['nome'], content=player, size_hint=(0.95, 0.8), background_color=(0, 0, 0, 0.95))
                 pop.bind(on_dismiss=lambda x: setattr(player, 'state', 'stop'))
                 pop.open()
+                
+                # SÓ DÁ O PLAY após 1 segundo com o player já na tela
+                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 1.0)
             except Exception as e:
                 MDDialog(text=f"Erro no player: {e}").open()
 
@@ -249,7 +252,7 @@ class TelaTreino(MDScreen):
                     shutil.copyfileobj(f_in, f_out)
             
             if os.path.exists(caminho_final) and os.path.getsize(caminho_final) > 100:
-                Clock.schedule_once(_abrir, 1.0)
+                Clock.schedule_once(_abrir, 0.5)
             else:
                 MDDialog(text="Arquivo de vídeo não encontrado nos assets.").open()
         except Exception as e:
