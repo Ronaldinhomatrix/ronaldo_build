@@ -266,47 +266,75 @@ class TelaTreino(MDScreen):
         card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1)
 
     def _ver_midia(self, ex):
-        nome_arquivo = "video.mp4"
-        try:
-            from kivy.uix.videoplayer import VideoPlayer
-            import shutil
-            
-            app = MDApp.get_running_app()
-            caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
-            nome_arquivo = os.path.basename(caminho_asset)
-            
-            # user_data_dir funciona em iOS e Android
-            video_dir = os.path.join(app.user_data_dir, 'midia_cache')
-            if not os.path.exists(video_dir):
-                os.makedirs(video_dir, exist_ok=True)
-            
-            caminho_final = os.path.join(video_dir, nome_arquivo)
-            
-            # Mobile exige extração para o player nativo ler
-            if not os.path.exists(caminho_final) or os.path.getsize(caminho_final) < 100:
-                with open(caminho_asset, 'rb') as f_in:
-                    with open(caminho_final, 'wb') as f_out:
-                        shutil.copyfileobj(f_in, f_out)
+        app = MDApp.get_running_app()
+        caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
+        nome_arquivo = os.path.basename(caminho_asset)
+        
+        # 1. Preparar o local de destino (Cache do Smartphone)
+        video_dir = os.path.join(app.user_data_dir, 'videos_app')
+        if not os.path.exists(video_dir):
+            os.makedirs(video_dir, exist_ok=True)
+        
+        caminho_final = os.path.join(video_dir, nome_arquivo)
 
-            player = VideoPlayer(
-                source=caminho_final,
-                state='play',
-                options={'allow_stretch': True, 'eos': 'loop'}
-            )
-            
-            popup = Popup(
-                title=ex['nome'],
-                content=player,
-                size_hint=(0.95, 0.8),
-                background_color=(0, 0, 0, 0.95)
-            )
-            
-            popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
-            popup.open()
+        def _abrir_player(dt):
+            try:
+                from kivy.uix.videoplayer import VideoPlayer
+                
+                # Garantir que o player use o caminho absoluto correto
+                path_uri = os.path.abspath(caminho_final)
+                
+                player = VideoPlayer(
+                    source=path_uri,
+                    state='play',
+                    options={'allow_stretch': True, 'eos': 'loop'}
+                )
+                
+                popup = Popup(
+                    title=ex['nome'],
+                    content=player,
+                    size_hint=(0.95, 0.8),
+                    background_color=(0, 0, 0, 0.95)
+                )
+                
+                popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
+                popup.open()
+            except Exception as e:
+                MDDialog(text=f"Erro ao iniciar player: {str(e)}").open()
+
+        # 2. Processo de extração e delay
+        try:
+            # Só copia se o arquivo não existir ou estiver incompleto
+            if not os.path.exists(caminho_final) or os.path.getsize(caminho_final) < 100:
+                # Tenta abrir o asset de forma segura
+                sucesso = False
+                # Lista de possíveis raízes do projeto no Android/iOS
+                possiveis_caminhos = [
+                    caminho_asset,
+                    os.path.join(os.getcwd(), caminho_asset),
+                    os.path.join(os.path.dirname(__file__), '..', caminho_asset)
+                ]
+                
+                import shutil
+                for p in possiveis_caminhos:
+                    if os.path.exists(p):
+                        with open(p, 'rb') as f_in:
+                            with open(caminho_final, 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                        sucesso = True
+                        break
+                
+                if not sucesso:
+                    # Tenta o carregamento direto pelo Kivy se os caminhos físicos falharem
+                    with open(caminho_asset, 'rb') as f_in:
+                        with open(caminho_final, 'wb') as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+
+            # 3. Aguardar 1.0s para garantir que o arquivo foi fechado e o sistema está pronto
+            Clock.schedule_once(_abrir_player, 1.0)
             
         except Exception as e:
-            msg = f"Video nao encontrado: {nome_arquivo}" if "No such file" in str(e) else f"Erro ao abrir player: {str(e)}"
-            MDDialog(text=msg).open()
+            MDDialog(text=f"Arquivo de video nao encontrado ou inacessivel.\nNome esperado: {nome_arquivo}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
