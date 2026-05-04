@@ -273,44 +273,53 @@ class TelaTreino(MDScreen):
         card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1)
 
     def _ver_midia(self, ex):
-        caminho_final = ""
         try:
             from kivy.uix.videoplayer import VideoPlayer
             from kivy.utils import platform as kivy_plat
             import shutil
             
+            # 1. Obter nome do arquivo e caminho original nos assets
             caminho_original = CardExercicio._caminho_video(ex.get('nome', ''))
             nome_arquivo = os.path.basename(caminho_original)
             
-            # No Android, o VideoPlayer nativo do Kivy muitas vezes não consegue abrir 
-            # arquivos diretamente de dentro do APK. Precisamos extrair para o cache.
+            # No Android, arquivos dentro do APK (assets) não podem ser lidos 
+            # diretamente por players nativos. Precisamos copiar para uma pasta pública.
             if kivy_plat == 'android':
-                # Caminho seguro no Android para arquivos temporários
                 from jnius import autoclass
                 PythonActivity = autoclass('org.kivy.android.PythonActivity')
                 activity = PythonActivity.mActivity
-                cache_dir = activity.getCacheDir().getAbsolutePath()
                 
-                video_cache = os.path.join(cache_dir, 'video_cache')
-                if not os.path.exists(video_cache):
-                    os.makedirs(video_cache)
+                # Usar pasta de arquivos externos para garantir que o player tenha acesso
+                base_dir = activity.getExternalFilesDir(None).getAbsolutePath()
+                video_dir = os.path.join(base_dir, 'videos')
                 
-                caminho_final = os.path.join(video_cache, nome_arquivo)
+                if not os.path.exists(video_dir):
+                    os.makedirs(video_dir)
                 
-                # Extração do Asset (via p4a/kivy loader)
-                if not os.path.exists(caminho_final):
-                    # No Android, assets estão no APK. Usamos o open do python 
-                    # que o p4a sobrecarrega para ler do APK.
-                    with open(os.path.join('assets', 'videos', nome_arquivo), 'rb') as f_in:
-                        with open(caminho_final, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
+                caminho_final = os.path.join(video_dir, nome_arquivo)
+                
+                # Força a atualização do vídeo se não existir ou se for muito pequeno (corrompido)
+                if not os.path.exists(caminho_final) or os.path.getsize(caminho_final) < 100:
+                    try:
+                        # O Kivy sobrecarrega o 'open' para ler de dentro do APK/Assets
+                        asset_path = os.path.join('assets', 'videos', nome_arquivo)
+                        with open(asset_path, 'rb') as f_in:
+                            with open(caminho_final, 'wb') as f_out:
+                                shutil.copyfileobj(f_in, f_out)
+                    except Exception as e:
+                        print(f"Erro ao extrair video: {e}")
             else:
                 caminho_final = caminho_original
+
+            # 2. Configurar Player com o caminho absoluto (file://)
+            if not os.path.exists(caminho_final):
+                MDDialog(text=f"Vídeo não encontrado:\n{nome_arquivo}").open()
+                return
 
             player = VideoPlayer(
                 source=caminho_final,
                 state='play',
-                options={'eos': 'loop'}
+                options={'allow_stretch': True, 'eos': 'loop'}
             )
             
             popup = Popup(
@@ -320,19 +329,12 @@ class TelaTreino(MDScreen):
                 background_color=(0, 0, 0, 0.95)
             )
             
+            # Garante que o vídeo pare ao fechar o popup
             popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
             popup.open()
             
         except Exception as e:
-            # Se falhar a cópia, tenta abrir direto do asset como último recurso
-            try:
-                caminho_fallback = CardExercicio._caminho_video(ex.get('nome', ''))
-                player = VideoPlayer(source=caminho_fallback, state='play', options={'eos': 'loop'})
-                popup = Popup(title=ex['nome'], content=player, size_hint=(0.95, 0.8), background_color=(0, 0, 0, 0.95))
-                popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
-                popup.open()
-            except:
-                MDDialog(text=f"Erro ao abrir vídeo.\nErro: {e}").open()
+            MDDialog(text=f"Erro ao abrir player.\nDetalhe: {str(e)}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'

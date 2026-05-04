@@ -118,23 +118,29 @@ class TelaHome(MDScreen):
         self._build()
 
     def set_status(self, texto):
-        self._lbl_status.text = texto
+        if "v" in texto and "Erro" not in texto and "Status" not in texto:
+            self._lbl_status.text = ""
+            self._lbl_status.opacity = 0
+        else:
+            self._lbl_status.text = texto
+            self._lbl_status.opacity = 1
 
     def _build(self):
         from kivy.uix.scrollview import ScrollView
 
         root = MDBoxLayout(orientation='vertical')
         
-        # Pequeno status bar no topo para debug (agora no topo esquerdo)
+        # Pequeno status bar no topo para erro (agora no topo direito)
         self._lbl_status = MDLabel(
-            text='v3.18',
-            halign='left',
-            font_style='Caption',
+            text='',
+            halign='right',
+            font_style='Subtitle2', # Maior para facilitar a leitura
             theme_text_color='Custom',
-            text_color=(1, 0.3, 0.3, 1), # Vermelho suave para chamar atenção se houver erro
+            text_color=(1, 0.2, 0.2, 1), # Vermelho vibrante para erro
             size_hint_y=None,
-            height=dp(20),
-            padding=[dp(10), 0, 0, 0]
+            height=dp(30),
+            padding=[0, 0, dp(15), 0],
+            opacity=0 # Invisível por padrão
         )
         root.add_widget(self._lbl_status)
 
