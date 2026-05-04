@@ -29,23 +29,16 @@ COR_PENDENTE  = get_color_from_hex('#3D3D3D')
 class CardExercicio(MDCard):
     @staticmethod
     def _caminho_video(nome):
-        # Normalização rigorosa para encontrar o arquivo
-        # 1. Remove acentos
+        import unicodedata
+        import re
+        # Normalização rigorosa para Android e iOS
         sem_acento = unicodedata.normalize('NFD', nome)
         sem_acento = ''.join(c for c in sem_acento if unicodedata.category(c) != 'Mn')
         
-        # 2. Converte para minúsculas e remove caracteres indesejados (como º)
-        import re
         arquivo = sem_acento.lower().strip()
-        arquivo = re.sub(r'[^a-z0-9\s_]', '', arquivo) # Mantém apenas letras, números e espaços
-        
-        # 3. Substitui espaços por underline
+        arquivo = re.sub(r'[^a-z0-9\s_]', '', arquivo)
         arquivo = arquivo.replace(' ', '_') + '.mp4'
         
-        # Em Android, caminhos dentro do APK devem ser acessados via prefixo especial
-        if platform.system() == 'Android':
-            return f"assets/videos/{arquivo}"
-
         return os.path.join('assets', 'videos', arquivo)
 
     def __init__(self, ex, tela, **kwargs):
@@ -273,48 +266,27 @@ class TelaTreino(MDScreen):
         card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1)
 
     def _ver_midia(self, ex):
+        nome_arquivo = "video.mp4"
         try:
             from kivy.uix.videoplayer import VideoPlayer
-            from kivy.utils import platform as kivy_plat
             import shutil
             
-            # 1. Obter nome do arquivo e caminho original nos assets
-            caminho_original = CardExercicio._caminho_video(ex.get('nome', ''))
-            nome_arquivo = os.path.basename(caminho_original)
+            app = MDApp.get_running_app()
+            caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
+            nome_arquivo = os.path.basename(caminho_asset)
             
-            # No Android, arquivos dentro do APK (assets) não podem ser lidos 
-            # diretamente por players nativos. Precisamos copiar para uma pasta pública.
-            if kivy_plat == 'android':
-                from jnius import autoclass
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                activity = PythonActivity.mActivity
-                
-                # Usar pasta de arquivos externos para garantir que o player tenha acesso
-                base_dir = activity.getExternalFilesDir(None).getAbsolutePath()
-                video_dir = os.path.join(base_dir, 'videos')
-                
-                if not os.path.exists(video_dir):
-                    os.makedirs(video_dir)
-                
-                caminho_final = os.path.join(video_dir, nome_arquivo)
-                
-                # Força a atualização do vídeo se não existir ou se for muito pequeno (corrompido)
-                if not os.path.exists(caminho_final) or os.path.getsize(caminho_final) < 100:
-                    try:
-                        # O Kivy sobrecarrega o 'open' para ler de dentro do APK/Assets
-                        asset_path = os.path.join('assets', 'videos', nome_arquivo)
-                        with open(asset_path, 'rb') as f_in:
-                            with open(caminho_final, 'wb') as f_out:
-                                shutil.copyfileobj(f_in, f_out)
-                    except Exception as e:
-                        print(f"Erro ao extrair video: {e}")
-            else:
-                caminho_final = caminho_original
-
-            # 2. Configurar Player com o caminho absoluto (file://)
-            if not os.path.exists(caminho_final):
-                MDDialog(text=f"Vídeo não encontrado:\n{nome_arquivo}").open()
-                return
+            # user_data_dir funciona em iOS e Android
+            video_dir = os.path.join(app.user_data_dir, 'midia_cache')
+            if not os.path.exists(video_dir):
+                os.makedirs(video_dir, exist_ok=True)
+            
+            caminho_final = os.path.join(video_dir, nome_arquivo)
+            
+            # Mobile exige extração para o player nativo ler
+            if not os.path.exists(caminho_final) or os.path.getsize(caminho_final) < 100:
+                with open(caminho_asset, 'rb') as f_in:
+                    with open(caminho_final, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
 
             player = VideoPlayer(
                 source=caminho_final,
@@ -329,12 +301,12 @@ class TelaTreino(MDScreen):
                 background_color=(0, 0, 0, 0.95)
             )
             
-            # Garante que o vídeo pare ao fechar o popup
             popup.bind(on_dismiss=lambda p: setattr(player, 'state', 'stop'))
             popup.open()
             
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir player.\nDetalhe: {str(e)}").open()
+            msg = f"Video nao encontrado: {nome_arquivo}" if "No such file" in str(e) else f"Erro ao abrir player: {str(e)}"
+            MDDialog(text=msg).open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
