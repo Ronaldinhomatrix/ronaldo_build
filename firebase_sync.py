@@ -48,9 +48,11 @@ def buscar_cliente_completo(cliente_id):
             }
     except Exception as e:
         err_msg = str(e)
-        if '403' in err_msg: return {'status': 'erro_403', 'mensagem': err_msg}
-        if '404' in err_msg: return {'status': 'erro_404', 'mensagem': "Cliente não encontrado no banco"}
-        return {'status': 'erro', 'mensagem': err_msg}
+        if '403' in err_msg: 
+            return {'status': 'erro_403', 'mensagem': 'Chave de API Restrita ou Firestore desativado'}
+        if '404' in err_msg: 
+            return {'status': 'erro_404', 'mensagem': 'ID do Atleta nao encontrado'}
+        return {'status': 'erro', 'mensagem': 'Erro de Conexao/Rede'}
 
 def buscar_id_por_nome(nome):
     try:
@@ -61,8 +63,11 @@ def buscar_id_por_nome(nome):
         req.add_header('Content-Type', 'application/json')
         with urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT) as resp:
             res = json.loads(resp.read())
-            if res and 'document' in res[0]: return res[0]['document']['name'].split('/')[-1]
-    except: pass
+            if res and isinstance(res, list) and 'document' in res[0]: 
+                return res[0]['document']['name'].split('/')[-1]
+    except Exception as e:
+        print(f"Erro ao buscar ID: {e}")
+        if '403' in str(e): return "ERRO_403_KEY"
     return None
 
 def criar_cliente(cliente_id, nome):
