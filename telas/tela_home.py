@@ -125,15 +125,16 @@ class TelaHome(MDScreen):
 
         root = MDBoxLayout(orientation='vertical')
         
-        # Pequeno status bar no topo para debug
+        # Pequeno status bar no topo para debug (agora no topo esquerdo)
         self._lbl_status = MDLabel(
             text='v3.18',
-            halign='right',
+            halign='left',
             font_style='Caption',
-            theme_text_color='Hint',
+            theme_text_color='Custom',
+            text_color=(1, 0.3, 0.3, 1), # Vermelho suave para chamar atenção se houver erro
             size_hint_y=None,
             height=dp(20),
-            padding=[0, 0, dp(10), 0]
+            padding=[dp(10), 0, 0, 0]
         )
         root.add_widget(self._lbl_status)
 

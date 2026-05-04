@@ -47,8 +47,10 @@ def buscar_cliente_completo(cliente_id):
                 'status': 'sucesso'
             }
     except Exception as e:
-        if '403' in str(e): return {'status': 'erro_403'}
-        return {'status': 'offline'}
+        err_msg = str(e)
+        if '403' in err_msg: return {'status': 'erro_403', 'mensagem': err_msg}
+        if '404' in err_msg: return {'status': 'erro_404', 'mensagem': "Cliente não encontrado no banco"}
+        return {'status': 'erro', 'mensagem': err_msg}
 
 def buscar_id_por_nome(nome):
     try:

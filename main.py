@@ -178,12 +178,17 @@ class RonaldoMedeirosFisiologistaApp(MDApp):
                     if home: Clock.schedule_once(lambda dt: home.set_status("v"+VERSION))
                 else:
                     status_txt = dados.get('status', 'erro') if dados else "falha"
-                    if home: Clock.schedule_once(lambda dt: home.set_status(f"Status: {status_txt}"))
+                    msg = dados.get('mensagem', '') if dados else ""
+                    if home:
+                        display_text = f"Status: {status_txt}"
+                        if msg: display_text += f" ({msg})"
+                        Clock.schedule_once(lambda dt: home.set_status(display_text))
             except Exception as e:
                 # Usa Clock para atualizar a interface com segurança a partir da thread
+                err_str = str(e)
                 def _erro_ui(dt):
                     home_screen = self.sm.get_screen('home') if self.sm.has_screen('home') else None
-                    if home_screen: home_screen.set_status("Erro: Conexão")
+                    if home_screen: home_screen.set_status(f"Erro: {err_str}")
                 Clock.schedule_once(_erro_ui)
 
         threading.Thread(target=_thread_sync, daemon=True).start()
