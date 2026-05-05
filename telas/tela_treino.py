@@ -231,28 +231,19 @@ class TelaTreino(MDScreen):
     def _ver_midia(self, ex):
         app = MDApp.get_running_app()
         caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
-        nome_arquivo = os.path.basename(caminho_asset)
         
-        # Pasta de cache interna do app (sempre tem permissão de escrita)
-        video_dir = os.path.join(app.user_data_dir, 'midia_cache')
-        if not os.path.exists(video_dir):
-            os.makedirs(video_dir, exist_ok=True)
-            
-        caminho_final = os.path.join(video_dir, nome_arquivo)
-
-        def _abrir(dt):
+        from kivy.utils import platform as kivy_plat
+        from kivy.resources import resource_find
+        
+        def _abrir_player(path_video):
             try:
                 from kivy.uix.videoplayer import VideoPlayer
-                from kivy.utils import platform as kivy_plat
                 
-                # Para Android e iOS, o caminho precisa do prefixo file://
-                # E o caminho absoluto deve ser usado para não haver erro de localização
-                abs_path = os.path.abspath(caminho_final)
-                source_uri = f"file://{abs_path}" if kivy_plat in ('android', 'ios') else abs_path
-                
-                # Inicia em PAUSE para carregar os drivers e o buffer
+                # Para Android/iOS, o driver nativo muitas vezes prefere o caminho relativo 
+                # se estiver dentro do pacote, ou o absoluto com file:// se estiver fora.
+                # Vamos tentar o caminho que o resource_find nos der.
                 player = VideoPlayer(
-                    source=source_uri, 
+                    source=path_video, 
                     state='pause', 
                     options={'eos': 'loop', 'allow_stretch': True}
                 )
@@ -262,42 +253,36 @@ class TelaTreino(MDScreen):
                     size_hint=(0.95, 0.8), 
                     background_color=(0, 0, 0, 0.95)
                 )
-                # Garante que o vídeo pare ao fechar o popup
                 pop.bind(on_dismiss=lambda x: setattr(player, 'state', 'stop'))
                 pop.open()
 
-                # Delay de 1s para o play acontecer, garantindo estabilidade do hardware
-                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 1.0)
+                # Delay de 1.2s para garantir que o buffer do driver nativo carregou
+                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 1.2)
                 
             except Exception as e:
                 MDDialog(text=f"Erro no player: {e}").open()
 
         try:
-            # No Android, assets estão dentro do APK. shutil.copy2 falha com Permission Denied 
-            # porque tenta copiar metadados ou acessar o asset como arquivo físico do SO.
-            # Usamos open() que o Kivy intercepta corretamente para ler do APK.
-            if not os.path.exists(caminho_final) or os.path.getsize(caminho_final) < 100:
-                from kivy.resources import resource_find
-                # Tenta localizar o asset de forma robusta
-                path_no_apk = resource_find(caminho_asset)
-                
-                if path_no_apk:
-                    with open(path_no_apk, 'rb') as f_in:
-                        with open(caminho_final, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
-                else:
-                    # Backup: tenta abrir direto o caminho relativo
-                    with open(caminho_asset, 'rb') as f_in:
-                        with open(caminho_final, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
+            # Tenta localizar o vídeo nos assets do app de forma robusta
+            video_no_app = resource_find(caminho_asset)
             
-            if os.path.exists(caminho_final) and os.path.getsize(caminho_final) > 100:
-                Clock.schedule_once(_abrir, 0.1)
+            if video_no_app:
+                # Se encontrou dentro do APK, usamos o caminho direto do resource_find
+                # No Android, isso resolve o problema da tela preta por caminho inválido
+                _abrir_player(video_no_app)
             else:
-                MDDialog(text="Vídeo não encontrado nos arquivos do app.").open()
+                # Se não encontrou, tenta a pasta de cache como última alternativa
+                nome_arquivo = os.path.basename(caminho_asset)
+                caminho_cache = os.path.join(app.user_data_dir, 'midia_cache', nome_arquivo)
+                
+                if os.path.exists(caminho_cache) and os.path.getsize(caminho_cache) > 100:
+                    abs_path = os.path.abspath(caminho_cache)
+                    path_final = f"file://{abs_path}" if kivy_plat in ('android', 'ios') else abs_path
+                    _abrir_player(path_final)
+                else:
+                    MDDialog(text=f"Vídeo não encontrado: {os.path.basename(caminho_asset)}").open()
         except Exception as e:
-            # Se der erro de permissão aqui, pode ser que o arquivo esteja preso por outra instância
-            MDDialog(text=f"Erro ao preparar vídeo: {e}").open()
+            MDDialog(text=f"Erro ao localizar vídeo: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
