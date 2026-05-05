@@ -16,10 +16,10 @@ from kivymd.app import MDApp
 from kivy.uix.label import Label
 from kivy.utils import platform as kivy_platform
 
-# Deixa o Kivy selecionar o melhor player automaticamente para cada plataforma
-# No Android ele usará o 'android' e no iOS o 'avplayer'
-# if kivy_platform == 'android':
-#    os.environ['KIVY_VIDEO'] = 'android'
+# No Android, usamos ffpyplayer para garantir que MP4s rodem sem tela preta
+# No iOS, o Kivy usará automaticamente o AVPlayer nativo
+if kivy_platform == 'android':
+    os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 
 VERSION = "3.18"
 

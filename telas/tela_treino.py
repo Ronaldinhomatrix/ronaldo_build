@@ -230,20 +230,26 @@ class TelaTreino(MDScreen):
 
     def _ver_midia(self, ex):
         app = MDApp.get_running_app()
-        caminho_asset = CardExercicio._caminho_video(ex.get('nome', ''))
+        caminho_relativo = CardExercicio._caminho_video(ex.get('nome', ''))
         
         from kivy.utils import platform as kivy_plat
-        from kivy.resources import resource_find
         
-        def _abrir_player(path_video):
+        # 1. Define pasta de extração (cache interno)
+        video_dir = os.path.join(app.user_data_dir, 'midia_cache')
+        if not os.path.exists(video_dir):
+            os.makedirs(video_dir, exist_ok=True)
+            
+        nome_arquivo = os.path.basename(caminho_relativo)
+        caminho_extraido = os.path.join(video_dir, nome_arquivo)
+
+        def _abrir_player(path_final):
             try:
                 from kivy.uix.videoplayer import VideoPlayer
                 
-                # Para Android/iOS, o driver nativo muitas vezes prefere o caminho relativo 
-                # se estiver dentro do pacote, ou o absoluto com file:// se estiver fora.
-                # Vamos tentar o caminho que o resource_find nos der.
+                # No Android/iOS, o ffpyplayer e o AVPlayer precisam do caminho absoluto
+                # Para evitar erros de "file not found", usamos o path direto se for arquivo físico
                 player = VideoPlayer(
-                    source=path_video, 
+                    source=path_final, 
                     state='pause', 
                     options={'eos': 'loop', 'allow_stretch': True}
                 )
@@ -256,33 +262,33 @@ class TelaTreino(MDScreen):
                 pop.bind(on_dismiss=lambda x: setattr(player, 'state', 'stop'))
                 pop.open()
 
-                # Delay de 1.2s para garantir que o buffer do driver nativo carregou
-                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 1.2)
+                # Delay de 1.5s para garantir que o hardware decodificou o primeiro frame
+                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 1.5)
                 
             except Exception as e:
                 MDDialog(text=f"Erro no player: {e}").open()
 
         try:
-            # Tenta localizar o vídeo nos assets do app de forma robusta
-            video_no_app = resource_find(caminho_asset)
+            # 2. Extração Física: Copia o vídeo de dentro do APK para o disco real
+            # Isso resolve o problema da "tela preta" no Android
+            if not os.path.exists(caminho_extraido) or os.path.getsize(caminho_extraido) < 100:
+                with open(caminho_relativo, 'rb') as f_in:
+                    with open(caminho_extraido, 'wb') as f_out:
+                        f_out.write(f_in.read())
             
-            if video_no_app:
-                # Se encontrou dentro do APK, usamos o caminho direto do resource_find
-                # No Android, isso resolve o problema da tela preta por caminho inválido
-                _abrir_player(video_no_app)
+            if os.path.exists(caminho_extraido) and os.path.getsize(caminho_extraido) > 100:
+                _abrir_player(caminho_extraido)
             else:
-                # Se não encontrou, tenta a pasta de cache como última alternativa
-                nome_arquivo = os.path.basename(caminho_asset)
-                caminho_cache = os.path.join(app.user_data_dir, 'midia_cache', nome_arquivo)
+                MDDialog(text=f"Vídeo não encontrado nos assets: {nome_arquivo}").open()
                 
-                if os.path.exists(caminho_cache) and os.path.getsize(caminho_cache) > 100:
-                    abs_path = os.path.abspath(caminho_cache)
-                    path_final = f"file://{abs_path}" if kivy_plat in ('android', 'ios') else abs_path
-                    _abrir_player(path_final)
-                else:
-                    MDDialog(text=f"Vídeo não encontrado: {os.path.basename(caminho_asset)}").open()
         except Exception as e:
-            MDDialog(text=f"Erro ao localizar vídeo: {e}").open()
+            # Caso falhe a extração, tenta o método do resource_find como backup
+            from kivy.resources import resource_find
+            backup_path = resource_find(caminho_relativo)
+            if backup_path:
+                _abrir_player(backup_path)
+            else:
+                MDDialog(text=f"Erro ao preparar vídeo: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
