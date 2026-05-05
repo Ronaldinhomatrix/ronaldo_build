@@ -16,7 +16,7 @@ fullscreen = 0
 android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,READ_MEDIA_VIDEO,POST_NOTIFICATIONS
 
 # Configuração do FileProvider para o Android
-android.add_resources = res
+android.add_resources = %(source.dir)s/res
 android.manifest.application_extra_xml = manifest_extra.xml
 android.release_artifact = apk
 android.api = 34

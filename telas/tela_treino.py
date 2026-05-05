@@ -269,11 +269,13 @@ class TelaTreino(MDScreen):
                 
                 # Prepara o arquivo para o compartilhamento seguro (FileProvider)
                 video_file = File(caminho_extraido)
-                # O package name deve bater com o buildozer.spec
+                # O package name DEVE ser idêntico ao do buildozer.spec
                 app_package = "com.ronaldomedeiros.ronaldo_medeiros"
+                
+                # Chamada direta e segura da autoridade do FileProvider
                 video_uri = FileProvider.getUriForFile(
                     current_activity,
-                    f"{app_package}.fileprovider",
+                    app_package + ".fileprovider",
                     video_file
                 )
                 
