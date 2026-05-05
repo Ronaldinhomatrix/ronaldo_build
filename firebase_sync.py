@@ -105,9 +105,11 @@ def salvar_dados(cliente_id, historico, atividade, obs_cliente=None, on_success=
             url = f'{_BASE}/atletas/{cliente_id}?key={API_KEY}&{mask}'
             req = urllib.request.Request(url, data=json.dumps({'fields': fields}).encode('utf-8'), method='PATCH')
             req.add_header('Content-Type', 'application/json')
-            urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT)
+            with urllib.request.urlopen(req, timeout=60, context=_SSL_CONTEXT) as resp:
+                resp.read()
             if on_success: Clock.schedule_once(lambda dt: on_success(), 0)
         except Exception as e:
+            print(f"Erro ao salvar dados: {e}")
             if on_error: Clock.schedule_once(lambda dt: on_error(str(e)), 0)
     threading.Thread(target=_run, daemon=True).start()
 
@@ -129,8 +131,13 @@ def notificar_obs(cliente_nome, ex_nome, obs_texto, on_success=None, on_error=No
                     'X-Token':      NOTIF_TOKEN,
                 },
             )
-            urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT)
-            if on_success: Clock.schedule_once(lambda dt: on_success())
+            # Timeout aumentado para 60s pois o Render pode estar em 'cold start'
+            with urllib.request.urlopen(req, timeout=60, context=_SSL_CONTEXT) as resp:
+                resp.read()
+            if on_success: 
+                Clock.schedule_once(lambda dt: on_success())
         except Exception as e:
-            if on_error: Clock.schedule_once(lambda dt: on_error(str(e)))
+            print(f"Erro ao notificar: {e}")
+            if on_error: 
+                Clock.schedule_once(lambda dt: on_error(str(e)))
     threading.Thread(target=_run, daemon=True).start()

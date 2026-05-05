@@ -63,12 +63,12 @@ def _patch(path, fields):
     body = json.dumps({'fields': fields}).encode('utf-8')
     req  = urllib.request.Request(url, data=body, method='PATCH')
     req.add_header('Content-Type', 'application/json')
-    urllib.request.urlopen(req, timeout=15, context=_SSL_CONTEXT)
+    urllib.request.urlopen(req, timeout=60, context=_SSL_CONTEXT)
 
 
 def _get(path):
     url = f'{_BASE}/{path}?key={API_KEY}'
-    with urllib.request.urlopen(url, timeout=15, context=_SSL_CONTEXT) as resp:
+    with urllib.request.urlopen(url, timeout=60, context=_SSL_CONTEXT) as resp:
         return json.loads(resp.read())
 
 
@@ -176,7 +176,7 @@ def notificar_obs(cliente_nome, ex_nome, obs_texto):
                     'X-Token':      NOTIF_TOKEN,
                 },
             )
-            urllib.request.urlopen(req, timeout=10, context=_SSL_CONTEXT)
+            urllib.request.urlopen(req, timeout=60, context=_SSL_CONTEXT)
         except Exception as e:
             print(f'[Notif] erro: {e}')
     threading.Thread(target=_run, daemon=True).start()

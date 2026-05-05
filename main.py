@@ -16,9 +16,9 @@ from kivymd.app import MDApp
 from kivy.uix.label import Label
 from kivy.utils import platform as kivy_platform
 
-# Forçar player nativo no Android para resolver fundo cinza
+# Forçar player ffpyplayer no Android para maior compatibilidade de formatos
 if kivy_platform == 'android':
-    os.environ['KIVY_VIDEO'] = 'android'
+    os.environ['KIVY_VIDEO'] = 'ffpyplayer'
 
 VERSION = "3.18"
 

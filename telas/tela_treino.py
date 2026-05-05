@@ -194,6 +194,8 @@ class TelaTreino(MDScreen):
     def _salvar_obs(self, ex, card, texto, dlg):
         ex['obs'] = texto.strip()
         app = MDApp.get_running_app()
+        
+        # Salvamento local e no Firestore via app.salvar()
         app.salvar()
         dlg.dismiss()
         
@@ -201,13 +203,22 @@ class TelaTreino(MDScreen):
             card._btn_obs.text = 'Enviando...'
             card._btn_obs.md_bg_color = COR_OBS # Fica Amarelo
             import firebase_sync
-            # O crash ocorre por erro de argumentos na lambda. Adicionado *args para estabilidade.
+            
+            # Notifica o painel web sobre a nova observação
             firebase_sync.notificar_obs(
-                app.cliente['nome'], ex['nome'], ex['obs'], 
-                on_success=lambda *args: Clock.schedule_once(lambda dt: self._on_obs_sucesso(card)),
-                on_error=lambda *args: Clock.schedule_once(lambda dt: self._on_obs_erro(card))
+                app.cliente['nome'], 
+                ex['nome'], 
+                ex['obs'], 
+                on_success=lambda *args: self._on_obs_sucesso(card),
+                on_error=lambda *args: self._on_obs_erro(card)
             )
-            firebase_sync.salvar_dados(app.cliente['id'], app.historico, app.atividade, {ex['id']: ex['obs']})
+            # Sincroniza o campo obs_cliente especificamente
+            firebase_sync.salvar_dados(
+                app.cliente['id'], 
+                app.historico.copy() if hasattr(app.historico, 'copy') else app.historico, 
+                app.atividade[:] if isinstance(app.atividade, list) else app.atividade,
+                {ex['id']: ex['obs']}
+            )
 
     def _on_obs_sucesso(self, card):
         card._btn_obs.text = 'Observação Registrada'
@@ -232,29 +243,42 @@ class TelaTreino(MDScreen):
         def _abrir(dt):
             try:
                 from kivy.uix.videoplayer import VideoPlayer
-                abs_path = os.path.abspath(caminho_final)
-                source_uri = "file://" + abs_path if kivy_plat in ('android', 'ios') else abs_path
+                # No Android, caminhos absolutos funcionam melhor sem o prefixo file:// para alguns providers
+                source_path = os.path.abspath(caminho_final)
                 
-                # Abre em PAUSA primeiro para estabilizar o hardware
-                player = VideoPlayer(source=source_uri, state='pause', options={'eos': 'loop', 'allow_stretch': True})
-                pop = Popup(title=ex['nome'], content=player, size_hint=(0.95, 0.8), background_color=(0, 0, 0, 0.95))
+                player = VideoPlayer(
+                    source=source_path, 
+                    state='play', 
+                    options={'eos': 'loop', 'allow_stretch': True}
+                )
+                pop = Popup(
+                    title=ex['nome'], 
+                    content=player, 
+                    size_hint=(0.95, 0.8), 
+                    background_color=(0, 0, 0, 0.95)
+                )
                 pop.bind(on_dismiss=lambda x: setattr(player, 'state', 'stop'))
                 pop.open()
                 
-                # SÓ DÁ O PLAY após 1 segundo com o player já na tela
-                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 1.0)
             except Exception as e:
                 MDDialog(text=f"Erro no player: {e}").open()
 
         try:
+            # Garante que o arquivo existe e tem conteúdo
             if not os.path.exists(caminho_final) or os.path.getsize(caminho_final) < 100:
-                with open(caminho_asset, 'rb') as f_in, open(caminho_final, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+                if os.path.exists(caminho_asset):
+                    shutil.copy2(caminho_asset, caminho_final)
+                else:
+                    # Tenta procurar nos recursos do Kivy se o path direto falhar
+                    from kivy.resources import resource_find
+                    res_path = resource_find(caminho_asset)
+                    if res_path:
+                        shutil.copy2(res_path, caminho_final)
             
             if os.path.exists(caminho_final) and os.path.getsize(caminho_final) > 100:
-                Clock.schedule_once(_abrir, 0.5)
+                Clock.schedule_once(_abrir, 0.1)
             else:
-                MDDialog(text="Arquivo de vídeo não encontrado nos assets.").open()
+                MDDialog(text="Vídeo não encontrado. Verifique os arquivos do app.").open()
         except Exception as e:
             MDDialog(text=f"Erro ao preparar vídeo: {e}").open()
 

@@ -8,12 +8,12 @@ source.exclude_dirs = p4a_recipes,painel,.git,bin
 icon.filename = %(source.dir)s/icon_rm.png
 version = 3.18
 
-# Requirements ajustados para estabilidade com motor requests
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius,urllib3
+# Requirements ajustados para estabilidade e suporte a vídeo
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius,urllib3,ffpyplayer
 
 orientation = portrait
 fullscreen = 0
-android.permissions = INTERNET,READ_MEDIA_VIDEO,POST_NOTIFICATIONS
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,READ_MEDIA_VIDEO,POST_NOTIFICATIONS
 android.release_artifact = apk
 android.api = 34
 android.minapi = 21
