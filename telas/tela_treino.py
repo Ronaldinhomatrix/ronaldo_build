@@ -234,9 +234,15 @@ class TelaTreino(MDScreen):
         
         from kivy.utils import platform as kivy_plat
         
-        # 1. Define pasta de extração segura (cache interno)
-        # O Android e o iOS só conseguem abrir arquivos externos se estiverem em pastas reais
-        video_dir = os.path.join(app.user_data_dir, 'midia_cache')
+        # 1. Define pasta de extração PÚBLICA (Download ou Cache Externo)
+        # Players externos têm muito mais facilidade em ler pastas públicas
+        if kivy_plat == 'android':
+            from android.storage import primary_external_storage_path
+            base_dir = primary_external_storage_path()
+            video_dir = os.path.join(base_dir, 'Download', 'RonaldoMedeiros_Videos')
+        else:
+            video_dir = os.path.join(app.user_data_dir, 'midia_cache')
+            
         if not os.path.exists(video_dir):
             os.makedirs(video_dir, exist_ok=True)
             
@@ -244,7 +250,7 @@ class TelaTreino(MDScreen):
         caminho_extraido = os.path.join(video_dir, nome_arquivo)
 
         try:
-            # 2. Extração Física do arquivo de dentro do APK/IPA para o disco
+            # 2. Extração Física para a pasta pública
             if not os.path.exists(caminho_extraido) or os.path.getsize(caminho_extraido) < 100:
                 with open(caminho_relativo, 'rb') as f_in:
                     with open(caminho_extraido, 'wb') as f_out:
@@ -254,52 +260,35 @@ class TelaTreino(MDScreen):
                  MDDialog(text="Erro ao preparar arquivo de vídeo.").open()
                  return
 
-            # 3. CHAMADA DO PLAYER NATIVO (BYPASS MODE)
+            # 3. CHAMADA DO PLAYER NATIVO
             if kivy_plat == 'android':
                 from jnius import autoclass
-                
-                # Classes nativas do Android
                 PythonActivity = autoclass('org.kivy.android.PythonActivity')
                 Intent = autoclass('android.content.Intent')
                 File = autoclass('java.io.File')
                 Uri = autoclass('android.net.Uri')
                 
-                # BYPASS DE SEGURANÇA (StrictMode): 
-                # Isso permite usar URIs de arquivo direto (file://) em Androids novos
-                # sem precisar das configurações complexas de FileProvider que estão falhando.
+                # Desativa travas de segurança para URIs de arquivo
                 StrictMode = autoclass('android.os.StrictMode')
                 VmPolicyBuilder = autoclass('android.os.StrictMode$VmPolicy$Builder')
                 StrictMode.setVmPolicy(VmPolicyBuilder().build())
                 
                 current_activity = PythonActivity.mActivity
                 video_file = File(caminho_extraido)
+                video_uri = Uri.fromFile(video_file)
                 
-                try:
-                    # Gera a URI direta do arquivo
-                    video_uri = Uri.fromFile(video_file)
-                    
-                    # Cria a Intent para visualizar o vídeo
-                    intent = Intent(Intent.ACTION_VIEW)
-                    intent.setDataAndType(video_uri, "video/mp4")
-                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    
-                    # Abre o player nativo do celular
-                    current_activity.startActivity(intent)
-                except Exception as e:
-                    MDDialog(text=f"Erro ao abrir player: {e}").open()
+                intent = Intent(Intent.ACTION_VIEW)
+                intent.setDataAndType(video_uri, "video/mp4")
+                # Garante que o player tenha permissão de leitura
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                
+                current_activity.startActivity(intent)
 
             elif kivy_plat == 'ios':
-                # No iOS usamos o player nativo. 
-                # O bloco try evita que o build Android quebre por falta de bibliotecas iOS
-                try:
-                    import webbrowser
-                    webbrowser.open(f"file://{caminho_extraido}")
-                except:
-                    pass
-                
+                import webbrowser
+                webbrowser.open(f"file://{caminho_extraido}")
             else:
-                # Desktop (Windows/Mac) - Abre o player padrão do sistema
                 import webbrowser
                 webbrowser.open(os.path.abspath(caminho_extraido))
 
