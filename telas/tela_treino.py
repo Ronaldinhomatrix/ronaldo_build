@@ -234,7 +234,8 @@ class TelaTreino(MDScreen):
         
         from kivy.utils import platform as kivy_plat
         
-        # 1. Define pasta de extração (cache interno)
+        # 1. Define pasta de extração segura (cache interno)
+        # O Android e o iOS só conseguem abrir arquivos externos se estiverem em pastas reais
         video_dir = os.path.join(app.user_data_dir, 'midia_cache')
         if not os.path.exists(video_dir):
             os.makedirs(video_dir, exist_ok=True)
@@ -242,53 +243,72 @@ class TelaTreino(MDScreen):
         nome_arquivo = os.path.basename(caminho_relativo)
         caminho_extraido = os.path.join(video_dir, nome_arquivo)
 
-        def _abrir_player(path_final):
-            try:
-                from kivy.uix.videoplayer import VideoPlayer
-                
-                # No Android/iOS, o ffpyplayer e o AVPlayer precisam do caminho absoluto
-                # Para evitar erros de "file not found", usamos o path direto se for arquivo físico
-                player = VideoPlayer(
-                    source=path_final, 
-                    state='pause', 
-                    options={'eos': 'loop', 'allow_stretch': True}
-                )
-                pop = Popup(
-                    title=ex['nome'], 
-                    content=player, 
-                    size_hint=(0.95, 0.8), 
-                    background_color=(0, 0, 0, 0.95)
-                )
-                pop.bind(on_dismiss=lambda x: setattr(player, 'state', 'stop'))
-                pop.open()
-
-                # Delay de 1.5s para garantir que o hardware decodificou o primeiro frame
-                Clock.schedule_once(lambda dt: setattr(player, 'state', 'play'), 1.5)
-                
-            except Exception as e:
-                MDDialog(text=f"Erro no player: {e}").open()
-
         try:
-            # 2. Extração Física: Copia o vídeo de dentro do APK para o disco real
-            # Isso resolve o problema da "tela preta" no Android
+            # 2. Extração Física do arquivo de dentro do APK/IPA para o disco
             if not os.path.exists(caminho_extraido) or os.path.getsize(caminho_extraido) < 100:
                 with open(caminho_relativo, 'rb') as f_in:
                     with open(caminho_extraido, 'wb') as f_out:
                         f_out.write(f_in.read())
             
-            if os.path.exists(caminho_extraido) and os.path.getsize(caminho_extraido) > 100:
-                _abrir_player(caminho_extraido)
-            else:
-                MDDialog(text=f"Vídeo não encontrado nos assets: {nome_arquivo}").open()
+            if not (os.path.exists(caminho_extraido) and os.path.getsize(caminho_extraido) > 100):
+                 MDDialog(text="Erro ao preparar arquivo de vídeo.").open()
+                 return
+
+            # 3. CHAMADA DO PLAYER NATIVO (INTENTS)
+            if kivy_plat == 'android':
+                from jnius import autoclass, cast
                 
-        except Exception as e:
-            # Caso falhe a extração, tenta o método do resource_find como backup
-            from kivy.resources import resource_find
-            backup_path = resource_find(caminho_relativo)
-            if backup_path:
-                _abrir_player(backup_path)
+                # Classes nativas do Android
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                Intent = autoclass('android.content.Intent')
+                Uri = autoclass('android.net.Uri')
+                File = autoclass('java.io.File')
+                FileProvider = autoclass('androidx.core.content.FileProvider')
+                
+                current_activity = PythonActivity.mActivity
+                
+                # Prepara o arquivo para o compartilhamento seguro (FileProvider)
+                video_file = File(caminho_extraido)
+                # O package name deve bater com o buildozer.spec
+                app_package = "com.ronaldomedeiros.ronaldo_medeiros"
+                video_uri = FileProvider.getUriForFile(
+                    current_activity,
+                    f"{app_package}.fileprovider",
+                    video_file
+                )
+                
+                # Cria a Intent para VER o vídeo
+                intent = Intent(Intent.ACTION_VIEW)
+                intent.setDataAndType(video_uri, "video/mp4")
+                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                
+                # Abre o player nativo (o app vai para background)
+                current_activity.startActivity(intent)
+
+            elif kivy_plat == 'ios':
+                # No iOS usamos a biblioteca de visualização rápida do sistema
+                from pyobjus import autoclass
+                from pyobjus.dylib_manager import load_framework
+                load_framework('/System/Library/Frameworks/QuickLook.framework')
+                
+                NSURL = autoclass('NSURL')
+                file_url = NSURL.fileURLWithPath_(caminho_extraido)
+                
+                # Chamada para o controlador de interação do iOS
+                # Isso abre o player nativo do iPhone
+                from plyer import native_file_chooser # Caso plyer esteja instalado
+                # Ou uma implementação direta via pyobjus (mais complexa)
+                # Por simplicidade, usaremos o webbrowser como backup universal no iOS
+                import webbrowser
+                webbrowser.open(f"file://{caminho_extraido}")
+                
             else:
-                MDDialog(text=f"Erro ao preparar vídeo: {e}").open()
+                # Desktop (Windows/Mac) - Abre o player padrão do sistema
+                import webbrowser
+                webbrowser.open(os.path.abspath(caminho_extraido))
+
+        except Exception as e:
+            MDDialog(text=f"Erro ao abrir player nativo: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
