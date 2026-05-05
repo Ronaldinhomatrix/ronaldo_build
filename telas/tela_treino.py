@@ -256,36 +256,42 @@ class TelaTreino(MDScreen):
 
             # 3. CHAMADA DO PLAYER NATIVO (INTENTS)
             if kivy_plat == 'android':
-                from jnius import autoclass, cast
+                from jnius import autoclass
                 
                 # Classes nativas do Android
                 PythonActivity = autoclass('org.kivy.android.PythonActivity')
                 Intent = autoclass('android.content.Intent')
-                Uri = autoclass('android.net.Uri')
                 File = autoclass('java.io.File')
                 FileProvider = autoclass('androidx.core.content.FileProvider')
                 
                 current_activity = PythonActivity.mActivity
+                context = current_activity.getApplicationContext()
                 
-                # Prepara o arquivo para o compartilhamento seguro (FileProvider)
+                # Obtém o nome do pacote dinamicamente para evitar erros de digitação
+                package_name = context.getPackageName()
+                authority = package_name + ".fileprovider"
+                
+                # Prepara o arquivo
                 video_file = File(caminho_extraido)
-                # O package name DEVE ser idêntico ao do buildozer.spec
-                app_package = "com.ronaldomedeiros.ronaldo_medeiros"
                 
-                # Chamada direta e segura da autoridade do FileProvider
-                video_uri = FileProvider.getUriForFile(
-                    current_activity,
-                    app_package + ".fileprovider",
-                    video_file
-                )
-                
-                # Cria a Intent para VER o vídeo
-                intent = Intent(Intent.ACTION_VIEW)
-                intent.setDataAndType(video_uri, "video/mp4")
-                intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                
-                # Abre o player nativo (o app vai para background)
-                current_activity.startActivity(intent)
+                try:
+                    # Gera a URI segura via FileProvider
+                    video_uri = FileProvider.getUriForFile(
+                        current_activity,
+                        authority,
+                        video_file
+                    )
+                    
+                    # Cria a Intent para visualizar o vídeo
+                    intent = Intent(Intent.ACTION_VIEW)
+                    intent.setDataAndType(video_uri, "video/mp4")
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    
+                    # Abre o player nativo
+                    current_activity.startActivity(intent)
+                except Exception as jvm_err:
+                    MDDialog(text=f"Erro no FileProvider: {jvm_err}\nAuthority: {authority}").open()
 
             elif kivy_plat == 'ios':
                 # No iOS usamos o player nativo. 
