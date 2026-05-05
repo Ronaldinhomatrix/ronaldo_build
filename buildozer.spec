@@ -8,22 +8,24 @@ source.exclude_dirs = p4a_recipes,painel,.git,bin
 icon.filename = %(source.dir)s/icon_rm.png
 version = 3.18
 
-# Requirements ajustados para estabilidade e suporte a vídeo
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius,urllib3,ffpyplayer
+# Requirements para máxima compatibilidade Android/iOS
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,pillow,certifi,openssl,sqlite3,requests,android,pyasn1,idna,charset-normalizer,pyjnius,urllib3
 
 orientation = portrait
 fullscreen = 0
-android.permissions = INTERNET,READ_EXTERNAL_STORAGE,READ_MEDIA_VIDEO,POST_NOTIFICATIONS
+android.permissions = INTERNET,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,READ_MEDIA_VIDEO,POST_NOTIFICATIONS
 android.release_artifact = apk
 android.api = 34
 android.minapi = 21
 android.ndk = 25b
 
-# Compilando apenas para a arquitetura mais comum para garantir o sucesso no GitHub
-android.archs = arm64-v8a
+# Compilando para arquiteturas modernas
+android.archs = arm64-v8a, armeabi-v7a
 
 android.accept_sdk_license = True
-android.video_player = mediaplayer
+# Deixa o Kivy escolher o melhor player nativo disponível
+# No Android ele usará o 'android', no iOS o 'avplayer'
+# android.video_player = mediaplayer
 
 [buildozer]
 log_level = 2

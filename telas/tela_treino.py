@@ -243,12 +243,16 @@ class TelaTreino(MDScreen):
         def _abrir(dt):
             try:
                 from kivy.uix.videoplayer import VideoPlayer
-                # No Android com ffpyplayer, o caminho absoluto é o mais seguro
-                source_path = os.path.abspath(caminho_final)
+                from kivy.utils import platform as kivy_plat
+                
+                # Para Android e iOS, o caminho precisa do prefixo file://
+                # E o caminho absoluto deve ser usado para não haver erro de localização
+                abs_path = os.path.abspath(caminho_final)
+                source_uri = f"file://{abs_path}" if kivy_plat in ('android', 'ios') else abs_path
                 
                 # Inicia em PAUSE para carregar os drivers e o buffer
                 player = VideoPlayer(
-                    source=source_path, 
+                    source=source_uri, 
                     state='pause', 
                     options={'eos': 'loop', 'allow_stretch': True}
                 )
@@ -258,6 +262,7 @@ class TelaTreino(MDScreen):
                     size_hint=(0.95, 0.8), 
                     background_color=(0, 0, 0, 0.95)
                 )
+                # Garante que o vídeo pare ao fechar o popup
                 pop.bind(on_dismiss=lambda x: setattr(player, 'state', 'stop'))
                 pop.open()
 

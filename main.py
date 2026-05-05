@@ -16,9 +16,10 @@ from kivymd.app import MDApp
 from kivy.uix.label import Label
 from kivy.utils import platform as kivy_platform
 
-# Forçar player ffpyplayer no Android para maior compatibilidade de formatos
-if kivy_platform == 'android':
-    os.environ['KIVY_VIDEO'] = 'ffpyplayer'
+# Deixa o Kivy selecionar o melhor player automaticamente para cada plataforma
+# No Android ele usará o 'android' e no iOS o 'avplayer'
+# if kivy_platform == 'android':
+#    os.environ['KIVY_VIDEO'] = 'android'
 
 VERSION = "3.18"
 
