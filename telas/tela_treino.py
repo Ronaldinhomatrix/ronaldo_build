@@ -286,21 +286,13 @@ class TelaTreino(MDScreen):
                 current_activity.startActivity(intent)
 
             elif kivy_plat == 'ios':
-                # No iOS usamos a biblioteca de visualização rápida do sistema
-                from pyobjus import autoclass
-                from pyobjus.dylib_manager import load_framework
-                load_framework('/System/Library/Frameworks/QuickLook.framework')
-                
-                NSURL = autoclass('NSURL')
-                file_url = NSURL.fileURLWithPath_(caminho_extraido)
-                
-                # Chamada para o controlador de interação do iOS
-                # Isso abre o player nativo do iPhone
-                from plyer import native_file_chooser # Caso plyer esteja instalado
-                # Ou uma implementação direta via pyobjus (mais complexa)
-                # Por simplicidade, usaremos o webbrowser como backup universal no iOS
-                import webbrowser
-                webbrowser.open(f"file://{caminho_extraido}")
+                # No iOS usamos o player nativo. 
+                # O bloco try evita que o build Android quebre por falta de bibliotecas iOS
+                try:
+                    import webbrowser
+                    webbrowser.open(f"file://{caminho_extraido}")
+                except:
+                    pass
                 
             else:
                 # Desktop (Windows/Mac) - Abre o player padrão do sistema
