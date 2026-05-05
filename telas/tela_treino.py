@@ -254,7 +254,7 @@ class TelaTreino(MDScreen):
                  MDDialog(text="Erro ao preparar arquivo de vídeo.").open()
                  return
 
-            # 3. CHAMADA DO PLAYER NATIVO (INTENTS)
+            # 3. CHAMADA DO PLAYER NATIVO (BYPASS MODE)
             if kivy_plat == 'android':
                 from jnius import autoclass
                 
@@ -262,25 +262,21 @@ class TelaTreino(MDScreen):
                 PythonActivity = autoclass('org.kivy.android.PythonActivity')
                 Intent = autoclass('android.content.Intent')
                 File = autoclass('java.io.File')
-                FileProvider = autoclass('androidx.core.content.FileProvider')
+                Uri = autoclass('android.net.Uri')
+                
+                # BYPASS DE SEGURANÇA (StrictMode): 
+                # Isso permite usar URIs de arquivo direto (file://) em Androids novos
+                # sem precisar das configurações complexas de FileProvider que estão falhando.
+                StrictMode = autoclass('android.os.StrictMode')
+                VmPolicyBuilder = autoclass('android.os.StrictMode$VmPolicy$Builder')
+                StrictMode.setVmPolicy(VmPolicyBuilder().build())
                 
                 current_activity = PythonActivity.mActivity
-                context = current_activity.getApplicationContext()
-                
-                # Obtém o nome do pacote dinamicamente para evitar erros de digitação
-                package_name = context.getPackageName()
-                authority = package_name + ".fileprovider"
-                
-                # Prepara o arquivo
                 video_file = File(caminho_extraido)
                 
                 try:
-                    # Gera a URI segura via FileProvider
-                    video_uri = FileProvider.getUriForFile(
-                        current_activity,
-                        authority,
-                        video_file
-                    )
+                    # Gera a URI direta do arquivo
+                    video_uri = Uri.fromFile(video_file)
                     
                     # Cria a Intent para visualizar o vídeo
                     intent = Intent(Intent.ACTION_VIEW)
@@ -288,10 +284,10 @@ class TelaTreino(MDScreen):
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     
-                    # Abre o player nativo
+                    # Abre o player nativo do celular
                     current_activity.startActivity(intent)
-                except Exception as jvm_err:
-                    MDDialog(text=f"Erro no FileProvider: {jvm_err}\nAuthority: {authority}").open()
+                except Exception as e:
+                    MDDialog(text=f"Erro ao abrir player: {e}").open()
 
             elif kivy_plat == 'ios':
                 # No iOS usamos o player nativo. 
