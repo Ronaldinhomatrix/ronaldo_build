@@ -255,45 +255,51 @@ class TelaTreino(MDScreen):
                 with open(caminho_relativo, 'rb') as f_in:
                     with open(caminho_extraido, 'wb') as f_out:
                         f_out.write(f_in.read())
+                        f_out.flush()
+                        os.fsync(f_out.fileno()) # Força a gravação imediata no disco
             
             if not (os.path.exists(caminho_extraido) and os.path.getsize(caminho_extraido) > 100):
                  MDDialog(text="Erro ao preparar arquivo de vídeo.").open()
                  return
 
-            # 3. CHAMADA DO PLAYER NATIVO
-            if kivy_plat == 'android':
-                from jnius import autoclass
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                Intent = autoclass('android.content.Intent')
-                File = autoclass('java.io.File')
-                Uri = autoclass('android.net.Uri')
-                
-                # Desativa travas de segurança para URIs de arquivo
-                StrictMode = autoclass('android.os.StrictMode')
-                VmPolicyBuilder = autoclass('android.os.StrictMode$VmPolicy$Builder')
-                StrictMode.setVmPolicy(VmPolicyBuilder().build())
-                
-                current_activity = PythonActivity.mActivity
-                video_file = File(caminho_extraido)
-                video_uri = Uri.fromFile(video_file)
-                
-                intent = Intent(Intent.ACTION_VIEW)
-                intent.setDataAndType(video_uri, "video/mp4")
-                # Garante que o player tenha permissão de leitura
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                
-                current_activity.startActivity(intent)
+            # 3. CHAMADA DO PLAYER COM DELAY (Evita o vai-e-vem e engasgadas iniciais)
+            def _disparar_player(dt):
+                try:
+                    if kivy_plat == 'android':
+                        from jnius import autoclass
+                        PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                        Intent = autoclass('android.content.Intent')
+                        File = autoclass('java.io.File')
+                        Uri = autoclass('android.net.Uri')
+                        
+                        StrictMode = autoclass('android.os.StrictMode')
+                        VmPolicyBuilder = autoclass('android.os.StrictMode$VmPolicy$Builder')
+                        StrictMode.setVmPolicy(VmPolicyBuilder().build())
+                        
+                        current_activity = PythonActivity.mActivity
+                        video_file = File(caminho_extraido)
+                        video_uri = Uri.fromFile(video_file)
+                        
+                        intent = Intent(Intent.ACTION_VIEW)
+                        intent.setDataAndType(video_uri, "video/mp4")
+                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        
+                        current_activity.startActivity(intent)
+                    elif kivy_plat == 'ios':
+                        import webbrowser
+                        webbrowser.open(f"file://{caminho_extraido}")
+                    else:
+                        import webbrowser
+                        webbrowser.open(os.path.abspath(caminho_extraido))
+                except Exception as inner_e:
+                    MDDialog(text=f"Erro ao disparar player: {inner_e}").open()
 
-            elif kivy_plat == 'ios':
-                import webbrowser
-                webbrowser.open(f"file://{caminho_extraido}")
-            else:
-                import webbrowser
-                webbrowser.open(os.path.abspath(caminho_extraido))
+            # Espera 0.8s para o Android processar o arquivo antes de abrir o player
+            Clock.schedule_once(_disparar_player, 0.8)
 
         except Exception as e:
-            MDDialog(text=f"Erro ao abrir player nativo: {e}").open()
+            MDDialog(text=f"Erro ao preparar player nativo: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
