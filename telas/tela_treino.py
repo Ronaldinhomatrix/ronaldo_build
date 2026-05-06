@@ -229,77 +229,83 @@ class TelaTreino(MDScreen):
         card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1)
 
     def _ver_midia(self, ex):
+        # Evita cliques duplicados
+        if hasattr(self, '_video_loading') and self._video_loading:
+            return
+        self._video_loading = True
+
         app = MDApp.get_running_app()
         caminho_relativo = CardExercicio._caminho_video(ex.get('nome', ''))
-        
         from kivy.utils import platform as kivy_plat
         
-        # 1. Define pasta de extração PÚBLICA (Download ou Cache Externo)
-        # Players externos têm muito mais facilidade em ler pastas públicas
+        # 1. Define pasta pública
         if kivy_plat == 'android':
             from android.storage import primary_external_storage_path
-            base_dir = primary_external_storage_path()
-            video_dir = os.path.join(base_dir, 'Download', 'RonaldoMedeiros_Videos')
+            video_dir = os.path.join(primary_external_storage_path(), 'Download', 'RonaldoMedeiros_Videos')
         else:
             video_dir = os.path.join(app.user_data_dir, 'midia_cache')
             
-        if not os.path.exists(video_dir):
-            os.makedirs(video_dir, exist_ok=True)
-            
-        nome_arquivo = os.path.basename(caminho_relativo)
-        caminho_extraido = os.path.join(video_dir, nome_arquivo)
+        os.makedirs(video_dir, exist_ok=True)
+        caminho_extraido = os.path.join(video_dir, os.path.basename(caminho_relativo))
 
-        try:
-            # 2. Extração Física para a pasta pública
-            if not os.path.exists(caminho_extraido) or os.path.getsize(caminho_extraido) < 100:
+        # Diálogo de espera para o usuário
+        self._dlg_wait = MDDialog(text="Preparando vídeo, por favor aguarde...", auto_dismiss=False)
+        self._dlg_wait.open()
+
+        def _executar_abertura():
+            try:
+                if kivy_plat == 'android':
+                    from jnius import autoclass
+                    PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                    Intent = autoclass('android.content.Intent')
+                    File = autoclass('java.io.File')
+                    Uri = autoclass('android.net.Uri')
+                    StrictMode = autoclass('android.os.StrictMode')
+                    VmPolicyBuilder = autoclass('android.os.StrictMode$VmPolicy$Builder')
+                    
+                    StrictMode.setVmPolicy(VmPolicyBuilder().build())
+                    
+                    current_activity = PythonActivity.mActivity
+                    video_uri = Uri.fromFile(File(caminho_extraido))
+                    
+                    intent = Intent(Intent.ACTION_VIEW)
+                    intent.setDataAndType(video_uri, "video/mp4")
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    
+                    current_activity.startActivity(intent)
+                else:
+                    import webbrowser
+                    webbrowser.open(os.path.abspath(caminho_extraido))
+            except Exception as e:
+                Clock.schedule_once(lambda dt: MDDialog(text=f"Erro ao abrir player: {e}").open())
+            finally:
+                self._video_loading = False
+                Clock.schedule_once(lambda dt: self._dlg_wait.dismiss())
+
+        def _extrair_thread():
+            try:
+                # Se o arquivo já existe, deletamos para garantir uma cópia limpa e sem engasgos
+                if os.path.exists(caminho_extraido):
+                    os.remove(caminho_extraido)
+                
                 with open(caminho_relativo, 'rb') as f_in:
                     with open(caminho_extraido, 'wb') as f_out:
-                        f_out.write(f_in.read())
+                        shutil.copyfileobj(f_in, f_out)
                         f_out.flush()
-                        os.fsync(f_out.fileno()) # Força a gravação imediata no disco
-            
-            if not (os.path.exists(caminho_extraido) and os.path.getsize(caminho_extraido) > 100):
-                 MDDialog(text="Erro ao preparar arquivo de vídeo.").open()
-                 return
+                        os.fsync(f_out.fileno())
+                
+                # Pequena pausa para o sistema de arquivos liberar o arquivo
+                import time
+                time.sleep(0.5)
+                Clock.schedule_once(lambda dt: _executar_abertura())
+            except Exception as e:
+                self._video_loading = False
+                Clock.schedule_once(lambda dt: self._dlg_wait.dismiss())
+                Clock.schedule_once(lambda dt: MDDialog(text=f"Erro na preparação: {e}").open())
 
-            # 3. CHAMADA DO PLAYER COM DELAY (Evita o vai-e-vem e engasgadas iniciais)
-            def _disparar_player(dt):
-                try:
-                    if kivy_plat == 'android':
-                        from jnius import autoclass
-                        PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                        Intent = autoclass('android.content.Intent')
-                        File = autoclass('java.io.File')
-                        Uri = autoclass('android.net.Uri')
-                        
-                        StrictMode = autoclass('android.os.StrictMode')
-                        VmPolicyBuilder = autoclass('android.os.StrictMode$VmPolicy$Builder')
-                        StrictMode.setVmPolicy(VmPolicyBuilder().build())
-                        
-                        current_activity = PythonActivity.mActivity
-                        video_file = File(caminho_extraido)
-                        video_uri = Uri.fromFile(video_file)
-                        
-                        intent = Intent(Intent.ACTION_VIEW)
-                        intent.setDataAndType(video_uri, "video/mp4")
-                        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        
-                        current_activity.startActivity(intent)
-                    elif kivy_plat == 'ios':
-                        import webbrowser
-                        webbrowser.open(f"file://{caminho_extraido}")
-                    else:
-                        import webbrowser
-                        webbrowser.open(os.path.abspath(caminho_extraido))
-                except Exception as inner_e:
-                    MDDialog(text=f"Erro ao disparar player: {inner_e}").open()
-
-            # Espera 0.8s para o Android processar o arquivo antes de abrir o player
-            Clock.schedule_once(_disparar_player, 0.8)
-
-        except Exception as e:
-            MDDialog(text=f"Erro ao preparar player nativo: {e}").open()
+        # Inicia a extração em background para não travar o App
+        threading.Thread(target=_extrair_thread, daemon=True).start()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
