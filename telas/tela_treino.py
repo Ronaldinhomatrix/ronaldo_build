@@ -229,83 +229,78 @@ class TelaTreino(MDScreen):
         card._btn_obs.md_bg_color = (0.8, 0.1, 0.1, 1)
 
     def _ver_midia(self, ex):
-        # Evita cliques duplicados
-        if hasattr(self, '_video_loading') and self._video_loading:
-            return
-        self._video_loading = True
-
         app = MDApp.get_running_app()
         caminho_relativo = CardExercicio._caminho_video(ex.get('nome', ''))
         from kivy.utils import platform as kivy_plat
         
-        # 1. Define pasta pública
-        if kivy_plat == 'android':
-            from android.storage import primary_external_storage_path
-            video_dir = os.path.join(primary_external_storage_path(), 'Download', 'RonaldoMedeiros_Videos')
-        else:
-            video_dir = os.path.join(app.user_data_dir, 'midia_cache')
-            
+        # 1. Pasta interna (não precisa ser pública para o VideoView nativo)
+        video_dir = os.path.join(app.user_data_dir, 'midia_cache')
         os.makedirs(video_dir, exist_ok=True)
         caminho_extraido = os.path.join(video_dir, os.path.basename(caminho_relativo))
 
-        # Diálogo de espera para o usuário
-        self._dlg_wait = MDDialog(text="Preparando vídeo, por favor aguarde...", auto_dismiss=False)
-        self._dlg_wait.open()
-
-        def _executar_abertura():
-            try:
-                if kivy_plat == 'android':
-                    from jnius import autoclass
-                    PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                    Intent = autoclass('android.content.Intent')
-                    File = autoclass('java.io.File')
-                    Uri = autoclass('android.net.Uri')
-                    StrictMode = autoclass('android.os.StrictMode')
-                    VmPolicyBuilder = autoclass('android.os.StrictMode$VmPolicy$Builder')
-                    
-                    StrictMode.setVmPolicy(VmPolicyBuilder().build())
-                    
-                    current_activity = PythonActivity.mActivity
-                    video_uri = Uri.fromFile(File(caminho_extraido))
-                    
-                    intent = Intent(Intent.ACTION_VIEW)
-                    intent.setDataAndType(video_uri, "video/mp4")
-                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    
-                    current_activity.startActivity(intent)
-                else:
-                    import webbrowser
-                    webbrowser.open(os.path.abspath(caminho_extraido))
-            except Exception as e:
-                Clock.schedule_once(lambda dt: MDDialog(text=f"Erro ao abrir player: {e}").open())
-            finally:
-                self._video_loading = False
-                Clock.schedule_once(lambda dt: self._dlg_wait.dismiss())
-
-        def _extrair_thread():
-            try:
-                # Se o arquivo já existe, deletamos para garantir uma cópia limpa e sem engasgos
-                if os.path.exists(caminho_extraido):
-                    os.remove(caminho_extraido)
-                
+        try:
+            # 2. Extração rápida
+            if not os.path.exists(caminho_extraido) or os.path.getsize(caminho_extraido) < 100:
                 with open(caminho_relativo, 'rb') as f_in:
                     with open(caminho_extraido, 'wb') as f_out:
                         shutil.copyfileobj(f_in, f_out)
-                        f_out.flush()
-                        os.fsync(f_out.fileno())
-                
-                # Pequena pausa para o sistema de arquivos liberar o arquivo
-                import time
-                time.sleep(0.5)
-                Clock.schedule_once(lambda dt: _executar_abertura())
-            except Exception as e:
-                self._video_loading = False
-                Clock.schedule_once(lambda dt: self._dlg_wait.dismiss())
-                Clock.schedule_once(lambda dt: MDDialog(text=f"Erro na preparação: {e}").open())
 
-        # Inicia a extração em background para não travar o App
-        threading.Thread(target=_extrair_thread, daemon=True).start()
+            if kivy_plat == 'android':
+                from jnius import autoclass, cast
+                from kivy.core.window import Window
+
+                # Classes nativas do Android para vídeo
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                VideoView = autoclass('android.widget.VideoView')
+                RelativeLayout = autoclass('android.widget.RelativeLayout')
+                LayoutParams = autoclass('android.view.ViewGroup$LayoutParams')
+                Color = autoclass('android.graphics.Color')
+                Button = autoclass('android.widget.Button')
+
+                activity = PythonActivity.mActivity
+
+                # Cria o layout e o player de forma nativa
+                layout = RelativeLayout(activity)
+                layout.setBackgroundColor(Color.BLACK)
+                
+                video_view = VideoView(activity)
+                v_params = RelativeLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+                v_params.addRule(RelativeLayout.CENTER_IN_PARENT)
+                layout.addView(video_view, v_params)
+
+                # Botão para fechar o vídeo
+                btn_fechar = Button(activity)
+                btn_fechar.setText("FECHAR VÍDEO")
+                b_params = RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
+                b_params.addRule(RelativeLayout.ALIGN_PARENT_TOP)
+                b_params.addRule(RelativeLayout.CENTER_HORIZONTAL)
+                b_params.setMargins(0, 50, 0, 0)
+                layout.addView(btn_fechar, b_params)
+
+                # Adiciona o layout nativo por cima do Kivy
+                activity.addContentView(layout, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+
+                def fechar_video_nativo(*args):
+                    parent = layout.getParent()
+                    if parent:
+                        # Remove o player da tela
+                        cast('android.view.ViewGroup', parent).removeView(layout)
+                        video_view.stopPlayback()
+
+                # Configurações do Player
+                video_view.setVideoPath(caminho_extraido)
+                btn_fechar.setOnClickListener(lambda v: fechar_video_nativo())
+                video_view.setOnCompletionListener(lambda mp: fechar_video_nativo())
+                
+                video_view.start()
+
+            else:
+                # Desktop ou iOS (usa o método anterior como backup)
+                import webbrowser
+                webbrowser.open(os.path.abspath(caminho_extraido))
+
+        except Exception as e:
+            MDDialog(text=f"Erro no Player Nativo: {e}").open()
 
     def _voltar(self):
         MDApp.get_running_app().sm.current = 'home'
